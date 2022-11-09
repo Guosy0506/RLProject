@@ -1,9 +1,3 @@
-"""
-Training
-Start a Visdom server with python -m visdom.server, it will serve http://localhost:8097/ by default.
-
-To train the agent, run python train.py --render --vis or python train.py --render without visdom. To test, run python test.py --render.
-"""
 import argparse
 import os
 
@@ -35,12 +29,15 @@ if __name__ == "__main__":
     agent = PPO_Agent(img_stack=args.img_stack,
                       gamma=args.gamma,
                       device=device)
-    env = CarRacingEnv(isrender=args.render,
-                       seed=args.seed,
+    env = CarRacingEnv(seed=args.seed,
+                       is_render=args.render,
                        img_stack=args.img_stack,
                        action_repeat=args.action_repeat)
     if args.vis:
         draw_reward = DrawLine(env="car", title="PPO", xlabel="Episode", ylabel="Moving averaged episode reward")
+        print("Vis is true")
+    if args.render:
+        print("render is true")
 
     training_records = []
     running_score = 0

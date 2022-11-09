@@ -11,7 +11,6 @@ class ARGS:
     action_repeat = 8
     img_stack = 4
     seed = 1
-    render = True
 
 
 args = ARGS()
@@ -28,7 +27,7 @@ class Env(object):
     """
 
     def __init__(self):
-        self.env = gym.make('CarRacing-v2', render_mode='human')
+        self.env = gym.make('CarRacing-v2', render_mode="human")
         self.reward_threshold = self.env.spec.reward_threshold
 
     def reset(self):
@@ -44,23 +43,23 @@ class Env(object):
     def step(self, action):
         total_reward = 0
         for i in range(args.action_repeat):
-            img_rgb, reward, done, die, _ = self.env.step(action)
+            img_rgb, reward, terminated, truncated, _ = self.env.step(action)
             # don't penalize "die state"
-            if die:
+            if truncated:
                 reward += 100
             # green penalty
             if np.mean(img_rgb[:, :, 1]) > 185.0:
                 reward -= 0.05
             total_reward += reward
             # if no reward recently, end the episode
-            finish = True if self.av_r(reward) <= -0.1 else False
-            if finish or done or die:
+            done = True if self.av_r(reward) <= -0.1 else False
+            if done or terminated or truncated:
                 break
         img_gray = self.rgb2gray(img_rgb)
         self.stack.pop(0)
         self.stack.append(img_gray)
         assert len(self.stack) == args.img_stack
-        return np.array(self.stack), total_reward, finish, done, die
+        return np.array(self.stack), total_reward, done, terminated, truncated
 
     @staticmethod
     def rgb2gray(rgb, norm=True):
@@ -162,13 +161,11 @@ if __name__ == "__main__":
         state = env.reset()
 
         for t in range(1000):
-
             action = agent.select_action(state)
-            state_, reward, finish, done, die = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
-
+            state_, reward, done, terminated, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
             score += reward
             state = state_
-            if finish or done or die:
+            if done or terminated or truncated:
                 break
 
         print('Ep {}\tScore: {:.2f}\t'.format(i_ep, score))
