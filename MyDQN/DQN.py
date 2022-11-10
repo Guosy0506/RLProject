@@ -26,17 +26,18 @@ MEMORY_CAPACITY = 6000
 IsValid = True  # If True, play the game once; Make sure IsReuseModel is True
 IsTrain = False  # If True, train the model
 IsSAVE = False  # If True, save the model in ${SAVE_PATH}
-IsReuseModel = True  # If True, load the model in ${SAVE_PATH}
+IsReuseModel = True  # If True, load the model in ${LOAD_PATH}
 SAVE_PATH = "1e-5.pth"
+LOAD_PATH = "1e-5.pth"
 
 # env.unwrapped的作用是解除限制，此时CartPole场景不再受时间限制，可以超过200步
-env = gym.make('CartPole-v1').unwrapped
+env = gym.make('CartPole-v1', render_mode="human").unwrapped
 N_ACTIONS = env.action_space.n
 N_STATES = env.observation_space.shape[0]
 ENV_A_SHAPE = 0 if isinstance(env.action_space.sample(), int) else env.action_space.sample().shape     # to confirm the shape
 
 
-class Net(nn.Module):
+class Net(nn.Module):  # 这里通过继承nn.Module,可以调用回调函数__call__，使得Net(x)等价于Net.forward(x)
     def __init__(self, ):
         super(Net, self).__init__()
         self.fc1 = nn.Linear(N_STATES, 128)
@@ -113,7 +114,7 @@ class DQN(object):
             'OPTIMIZER_STATE_DICT': self.optimizer.state_dict(),
             'MEMORY': self.memory,
             'MEMORY_COUNTER': self.memory_counter,
-            'LOSS_HISTORY': self.loss_his
+            # 'LOSS_HISTORY': self.loss_his  # 非常大
         }, SAVE_PATH)
 
     def load_model(self, path):
@@ -143,11 +144,11 @@ def main():
     reward = []
     mean_reward = []
     if IsReuseModel:
-        dqn.load_model(SAVE_PATH)
+        dqn.load_model(LOAD_PATH)
         episodes = 50
     if IsValid:
         print("\nValidation")
-        s = env.reset()
+        s, _ = env.reset()
         done = False
         ep_r = 0
         while not done:
@@ -162,13 +163,12 @@ def main():
     if IsTrain:
         print("Start training...")
         for i_episode in range(episodes):
-            s = env.reset()
+            s, _ = env.reset()
             ep_r = 0
             while True:
-                env.render()
                 a = dqn.choose_action(s)
                 # take action
-                s_, r, done, info = env.step(a)
+                s_, r, done, _, info = env.step(a)
                 # modify the reward
                 x, x_dot, theta, theta_dot = s_
                 r1 = (env.x_threshold - abs(x)) / env.x_threshold - 0.2
@@ -177,8 +177,8 @@ def main():
 
                 dqn.store_transition(s, a, r, s_)
 
-                ep_r += r
                 if dqn.memory_counter > MEMORY_CAPACITY:
+                    ep_r += r
                     dqn.learn()
                     if done:
                         print('Ep: ', i_episode,
