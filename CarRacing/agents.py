@@ -88,7 +88,7 @@ class PPO_Agent(object):
         return action, a_logp
 
     def save_param(self):
-        torch.save(self.net.state_dict(), 'param/ppo_net_params.pkl')
+        torch.save(self.net.state_dict(), 'param/ppo_net_second.pkl')
 
     def store_memory(self, transition):
         self.buffer[self.counter] = transition

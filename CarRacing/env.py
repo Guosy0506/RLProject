@@ -8,12 +8,12 @@ class CarRacingEnv(object):
     """
 
     def __init__(self,
-                 isrender,
+                 is_render,
                  seed,
                  img_stack,
                  action_repeat
                  ):
-        if isrender:
+        if is_render:
             self.env = gym.make('CarRacing-v2', render_mode='human')
         else:
             self.env = gym.make('CarRacing-v2')
@@ -35,24 +35,28 @@ class CarRacingEnv(object):
 
     def step(self, action):
         total_reward = 0
+        done = False
         for i in range(self.action_repeat):
             img_rgb, reward, terminated, truncated, _ = self.env.step(action)
             # don't penalize "die state"
-            if truncated:
+            if terminated:
                 reward += 100
             # green penalty
             if np.mean(img_rgb[:, :, 1]) > 185.0:
                 reward -= 0.05
             total_reward += reward
             # if no reward recently, end the episode
-            done = True if self.av_r(reward) <= -0.1 else False
-            if done or terminated or truncated:
+            if terminated or truncated:
+                done = True
+            if self.av_r(reward) <= -0.1:
+                done = True
+            if done:
                 break
         img_gray = self.rgb2gray(img_rgb)
         self.stack.pop(0)
         self.stack.append(img_gray)
         assert len(self.stack) == self.img_stack
-        return np.array(self.stack), total_reward, done, terminated, truncated
+        return np.array(self.stack), total_reward, done
 
     @staticmethod
     def rgb2gray(rgb, norm=True):

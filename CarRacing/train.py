@@ -48,13 +48,13 @@ if __name__ == "__main__":
 
         for t in range(1000):
             action, a_logp = agent.select_action(state)
-            state_, reward, done, terminated, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+            state_, reward, done = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
             if agent.store_memory((state, action, a_logp, reward, state_)):
                 print('updating')
                 agent.update()
             score += reward
             state = state_
-            if done or terminated or truncated:
+            if done:
                 break
         running_score = running_score * 0.99 + score * 0.01
 

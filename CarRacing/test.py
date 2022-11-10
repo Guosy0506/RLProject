@@ -45,7 +45,7 @@ class Env(object):
         for i in range(args.action_repeat):
             img_rgb, reward, terminated, truncated, _ = self.env.step(action)
             # don't penalize "die state"
-            if truncated:
+            if terminated:
                 reward += 100
             # green penalty
             if np.mean(img_rgb[:, :, 1]) > 185.0:
