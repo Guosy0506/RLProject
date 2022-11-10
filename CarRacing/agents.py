@@ -63,7 +63,7 @@ class PPO_Agent(object):
     device = None
     transition = None
 
-    def __init__(self, img_stack, gamma, device):
+    def __init__(self, img_stack, gamma, device, mode='TRAIN'):
         self.img_stack = img_stack
         self.gamma = gamma
         self.device = device
@@ -73,22 +73,32 @@ class PPO_Agent(object):
         self.net = Net(img_stack).double().to(self.device)
         self.buffer = np.empty(self.buffer_capacity, dtype=self.transition)
         self.counter = 0
-
+        self.mode = mode
+        print("Agent mode is {}.".format(mode))
         self.optimizer = optim.Adam(self.net.parameters(), lr=1e-3)
 
     def select_action(self, state):
         state = torch.from_numpy(state).double().to(self.device).unsqueeze(0)
+        action = None
         with torch.no_grad():
             alpha, beta = self.net(state)[0]
-        dist = Beta(alpha, beta)
-        action = dist.sample()
-        a_logp = dist.log_prob(action).sum(dim=1)
+        if self.mode == 'TRAIN':
+            dist = Beta(alpha, beta)
+            action = dist.sample()
+            a_logp = dist.log_prob(action).sum(dim=1)
+            a_logp = a_logp.item()
+        if self.mode == 'VALIDATION':
+            action = alpha / (alpha + beta)
+            a_logp = []
+        assert action is not None, 'mode is wrong!'
         action = action.squeeze().cpu().numpy()
-        a_logp = a_logp.item()
         return action, a_logp
 
     def save_param(self):
-        torch.save(self.net.state_dict(), 'param/ppo_net_second.pkl')
+        torch.save(self.net.state_dict(), 'param/ppo_net_third.pkl')
+
+    def load_param(self):
+        self.net.load_state_dict(torch.load('param/ppo_net_third.pkl', map_location=self.device))
 
     def store_memory(self, transition):
         self.buffer[self.counter] = transition

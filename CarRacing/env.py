@@ -46,9 +46,9 @@ class CarRacingEnv(object):
                 reward -= 0.05
             total_reward += reward
             # if no reward recently, end the episode
-            if terminated or truncated:
-                done = True
             if self.av_r(reward) <= -0.1:
+                done = True
+            if terminated or truncated:
                 done = True
             if done:
                 break
