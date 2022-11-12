@@ -17,6 +17,7 @@ Start a Visdom server with ```python -m visdom.server```, it will serve http://l
 
 To train the agent run ```python run.py --render --vis``` or ```python run.py --render``` without visdom. 
 To test, run ```python run.py (--render) --valid```.
+To view the best performance, run ```python run.py --action-repeat 1 --render --valid```
 
 ## Performance
 <div align=center><img src="img/car_racing_ppo.png" width="100%"/></div>

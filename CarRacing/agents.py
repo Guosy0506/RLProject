@@ -75,6 +75,8 @@ class PPO_Agent(object):
         self.counter = 0
         self.mode = mode
         print("Agent mode is {}.".format(mode))
+        if self.mode == "VALIDATION":
+            self.load_param()
         self.optimizer = optim.Adam(self.net.parameters(), lr=1e-3)
 
     def select_action(self, state):
@@ -98,7 +100,7 @@ class PPO_Agent(object):
         torch.save(self.net.state_dict(), 'param/ppo_net_third.pkl')
 
     def load_param(self):
-        self.net.load_state_dict(torch.load('param/ppo_net_third.pkl', map_location=self.device))
+        self.net.load_state_dict(torch.load('param/ppo_net_origin.pkl', map_location=self.device))
 
     def store_memory(self, transition):
         self.buffer[self.counter] = transition

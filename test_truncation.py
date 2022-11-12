@@ -3,53 +3,28 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-use_cuda = torch.cuda.is_available()
-device = torch.device("cuda" if use_cuda else "cpu")
-
 
 class Env(object):
     """
     Test environment wrapper for CarRacing
     """
-
     def __init__(self, seed):
         self.env = gym.make('CarRacing-v2', render_mode="human").unwrapped
-        self.reward_threshold = self.env.spec.reward_threshold
         self.seed = seed
 
     def reset(self):
-        self.counter = 0
-        self.av_r = self.reward_memory()
-
-        self.die = False
         img_rgb, _ = self.env.reset(seed=self.seed)
         img_gray = self.rgb2gray(img_rgb)
         self.stack = [img_gray] * 4
         return np.array(self.stack)
 
     def step(self, action):
-        total_reward = 0
-        die = False
-        for i in range(1):
-            img_rgb, reward, terminated, truncated, _ = self.env.step(action)
-            # don't penalize "die state"
-            if terminated:
-                reward += 100
-            # green penalty
-            if np.mean(img_rgb[:, :, 1]) > 185.0:
-                reward -= 0.05
-            total_reward += reward
-            # if no reward recently, end the episode
-            # if self.av_r(reward) <= -0.1 or terminated:
-            if terminated:
-                die = True
-            if die or truncated:
-                break
+        img_rgb, _, terminated, truncated, _ = self.env.step(action)
         img_gray = self.rgb2gray(img_rgb)
         self.stack.pop(0)
         self.stack.append(img_gray)
         assert len(self.stack) == 4
-        return np.array(self.stack), total_reward, die, truncated
+        return np.array(self.stack), terminated, truncated
 
     @staticmethod
     def rgb2gray(rgb, norm=True):
@@ -58,20 +33,6 @@ class Env(object):
             # normalize
             gray = gray.astype('float32') / 128 - 1
         return gray
-
-    @staticmethod
-    def reward_memory():
-        count = 0
-        length = 100
-        history = np.zeros(length)
-
-        def memory(reward):
-            nonlocal count
-            history[count] = reward
-            count = (count + 1) % length
-            return np.mean(history)
-
-        return memory
 
 
 class Net(nn.Module):
@@ -124,16 +85,41 @@ class Agent():
     """
 
     def __init__(self):
-        self.net = Net().float().to(device)
+        self.net = Net().float().to(torch.device("cpu"))
 
     def select_action(self, state):
-        state = torch.from_numpy(state).float().to(device).unsqueeze(0)
+        state = torch.from_numpy(state).float().to(torch.device("cpu")).unsqueeze(0)
         with torch.no_grad():
             alpha, beta = self.net(state)[0]
         action = alpha / (alpha + beta)
-
         action = action.squeeze().cpu().numpy()
         return action
 
     def load_param(self):
-        self.net.load_state_dict(torch.load('CarRacing/param/ppo_net_first.pkl', map_location=device))
+        self.net.load_state_dict(torch.load('RL_params.pkl', map_location=torch.device("cpu")))
+
+if __name__ == "__main__":
+    # 生成环境
+    env = Env(seed=56)
+    agent = Agent()
+    agent.load_param()
+    # 环境初始化
+    state = env.reset()
+    # 循环交互
+    while True:
+        # 从动作空间随机获取一个动作
+        action = agent.select_action(state)
+        # agent与环境进行一步交互
+        state, terminated, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+        # print(env.env.observation_space)
+        # print('state = {0}; reward = {1}'.format(state, reward))
+        # 判断当前episode 是否完成
+        if terminated:
+            print("Episode is terminated!")
+            break
+        if truncated:
+            print("Episode is truncated!")
+            break
+        # time.sleep(1)
+    # 环境结束
+    env.env.close()

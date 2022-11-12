@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+import torch
 
 
 class CarRacingEnv(object):
@@ -9,7 +10,6 @@ class CarRacingEnv(object):
 
     def __init__(self,
                  is_render,
-                 seed,
                  img_stack,
                  action_repeat
                  ):
@@ -17,7 +17,6 @@ class CarRacingEnv(object):
             self.env = gym.make('CarRacing-v2', render_mode='human')
         else:
             self.env = gym.make('CarRacing-v2')
-        self.seed = seed
         self.reward_threshold = self.env.spec.reward_threshold
         self.img_stack = img_stack
         self.action_repeat = action_repeat
@@ -28,14 +27,16 @@ class CarRacingEnv(object):
     def reset(self):
         self.counter = 0
         self.av_r = self.reward_memory()
-        img_rgb, _ = self.env.reset(seed=self.seed)
+        # seed = torch.round(100 * torch.rand(1)).numpy().astype(np.int)[0]
+        # img_rgb, _ = self.env.reset(seed=seed)
+        img_rgb, _ = self.env.reset()
         img_gray = self.rgb2gray(img_rgb)
         self.stack = [img_gray] * self.img_stack  # four frames for decision
         return np.array(self.stack)
 
     def step(self, action):
         total_reward = 0
-        done = False
+        die = False
         for i in range(self.action_repeat):
             img_rgb, reward, terminated, truncated, _ = self.env.step(action)
             # don't penalize "die state"
@@ -46,17 +47,15 @@ class CarRacingEnv(object):
                 reward -= 0.05
             total_reward += reward
             # if no reward recently, end the episode
-            if self.av_r(reward) <= -0.1:
-                done = True
-            if terminated or truncated:
-                done = True
-            if done:
+            if self.av_r(reward) <= -0.1 or terminated:
+                die = True
+            if die or truncated:
                 break
         img_gray = self.rgb2gray(img_rgb)
         self.stack.pop(0)
         self.stack.append(img_gray)
         assert len(self.stack) == self.img_stack
-        return np.array(self.stack), total_reward, done
+        return np.array(self.stack), total_reward, die, truncated
 
     @staticmethod
     def rgb2gray(rgb, norm=True):

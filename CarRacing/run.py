@@ -33,8 +33,7 @@ if __name__ == "__main__":
                       gamma=args.gamma,
                       device=device,
                       mode=mode)
-    env = CarRacingEnv(seed=args.seed,
-                       is_render=args.render,
+    env = CarRacingEnv(is_render=args.render,
                        img_stack=args.img_stack,
                        action_repeat=args.action_repeat)
 
@@ -56,24 +55,28 @@ if __name__ == "__main__":
         state = env.reset()
         if args.valid:  # validation mode
             # 限制单个回合最多1000step，避免原地打转
-            for t in range(1000):
+            while True:
                 action, _ = agent.select_action(state)
-                state_, reward, done = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+                state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
                 score += reward
                 state = state_
-                if done:
+                if die:
+                    print("End Episode because die")
+                    break
+                if truncated:
+                    print("End Episode because truncated")
                     break
             print('Ep {}\tScore: {:.2f}\t'.format(i_ep, score))
         else:  # training mode
             for t in range(1000):
                 action, a_logp = agent.select_action(state)
-                state_, reward, done = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+                state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
                 if agent.store_memory((state, action, a_logp, reward, state_)):
                     print('updating')
                     agent.update()
                 score += reward
                 state = state_
-                if done:
+                if die or truncated:
                     break
             running_score = running_score * 0.99 + score * 0.01
 
