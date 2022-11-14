@@ -50,6 +50,7 @@ if __name__ == "__main__":
 
     training_records = []
     running_score = 0
+    is_update = False
     Episode = VALID_EPI if args.valid else TRAIN_EPI
     for i_ep in range(Episode):
         score = 0
@@ -57,7 +58,6 @@ if __name__ == "__main__":
         if args.changemap:
             seed = torch.randint(0, 100000, (1,)).item()
         state = env.reset(seed=seed)
-        is_update = False
         if args.valid:  # validation mode
             while True:
                 action, _ = agent.select_action(state)
@@ -76,9 +76,9 @@ if __name__ == "__main__":
                 action, a_logp = agent.select_action(state)
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
                 if agent.store_memory((state, action, a_logp, reward, state_)):
+                    is_update = True  # agent params is updated
                     print('updating')
                     agent.update()
-                    is_update = True # agent params is updated
                 score += reward
                 state = state_
                 if die or truncated:
