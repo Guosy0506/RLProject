@@ -24,10 +24,10 @@ class CarRacingEnv(object):
         self.av_r = None
         self.stack = None
 
-    def reset(self):
+    def reset(self, seed=None):
         self.counter = 0
         self.av_r = self.reward_memory()
-        img_rgb, _ = self.env.reset()
+        img_rgb, _ = self.env.reset(seed=seed)
         img_gray = self.rgb2gray(img_rgb)
         self.stack = [img_gray] * self.img_stack  # four frames for decision
         return np.array(self.stack)

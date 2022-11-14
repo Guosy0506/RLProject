@@ -15,6 +15,7 @@ parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack
 parser.add_argument('--seed', type=int, default=0, metavar='N', help='random seed (default: 0)')
 parser.add_argument('--render', action='store_true', help='render the environment')
 parser.add_argument('--vis', action='store_true', help='use visdom')
+parser.add_argument('--changemap', action='store_true', help='change the map to train or validation')
 parser.add_argument('--valid', action='store_true', help='train the net')
 parser.add_argument(
     '--log-interval', type=int, default=10, metavar='N', help='interval between training status logs (default: 10)')
@@ -46,16 +47,17 @@ if __name__ == "__main__":
         print("Vis is true")
     if args.render:
         print("render is true")
-    if args.valid:
-        print("{}".format(mode))
 
     training_records = []
     running_score = 0
-    state = env.reset()
     Episode = VALID_EPI if args.valid else TRAIN_EPI
     for i_ep in range(Episode):
         score = 0
-        state = env.reset()
+        seed = 3357
+        if args.changemap:
+            seed = torch.randint(0, 100000, (1,)).item()
+        state = env.reset(seed=seed)
+
         if args.valid:  # validation mode
             while True:
                 action, _ = agent.select_action(state)
@@ -68,7 +70,8 @@ if __name__ == "__main__":
                 if truncated:
                     print("Episode is truncated")
                     break
-            print('Ep {}\tScore: {:.2f}\t'.format(i_ep, score))
+            print('Ep {}\tScore: {:.2f}\t Seed {}'.format(i_ep, score, seed))
+
         else:  # training mode
             for t in range(1000):
                 action, a_logp = agent.select_action(state)
