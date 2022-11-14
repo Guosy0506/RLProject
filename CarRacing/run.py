@@ -16,7 +16,7 @@ parser.add_argument('--seed', type=int, default=0, metavar='N', help='random see
 parser.add_argument('--render', action='store_true', help='render the environment')
 parser.add_argument('--vis', action='store_true', help='use visdom')
 parser.add_argument('--changemap', action='store_true', help='change the map to train or validation')
-parser.add_argument('--valid', action='store_true', help='train the net')
+parser.add_argument('--valid', action='store_true', help='if true, valid the net')
 parser.add_argument(
     '--log-interval', type=int, default=10, metavar='N', help='interval between training status logs (default: 10)')
 args = parser.parse_args()
@@ -57,7 +57,7 @@ if __name__ == "__main__":
         if args.changemap:
             seed = torch.randint(0, 100000, (1,)).item()
         state = env.reset(seed=seed)
-
+        is_update = False
         if args.valid:  # validation mode
             while True:
                 action, _ = agent.select_action(state)
@@ -70,8 +70,7 @@ if __name__ == "__main__":
                 if truncated:
                     print("Episode is truncated")
                     break
-            print('Ep {}\tScore: {:.2f}\t Seed {}'.format(i_ep, score, seed))
-
+            print('Ep {}\tScore: {:.2f}\tSeed {}'.format(i_ep, score, seed))
         else:  # training mode
             for t in range(1000):
                 action, a_logp = agent.select_action(state)
@@ -79,17 +78,23 @@ if __name__ == "__main__":
                 if agent.store_memory((state, action, a_logp, reward, state_)):
                     print('updating')
                     agent.update()
+                    is_update = True # agent params is updated
                 score += reward
                 state = state_
                 if die or truncated:
                     break
             running_score = running_score * 0.99 + score * 0.01
-
+            training_records.append([i_ep, score, running_score, seed])
             if i_ep % args.log_interval == 0:
+                np.save('training_records.npy', training_records)
                 if args.vis:
                     draw_reward(xdata=i_ep, ydata=running_score)
                 print('Ep {}\tLast score: {:.2f}\tMoving average score: {:.2f}'.format(i_ep, score, running_score))
-                agent.save_param()
+                if is_update:
+                    dir = "param/{}_{}".format("ppo", i_ep)
+                    agent.save_param(dir)
+                    print("save net params in {}".format(dir))
+                    is_update = False
             if running_score > env.reward_threshold:
                 print("Solved! Running reward is now {} and the last episode runs to {}!".format(running_score, score))
                 break

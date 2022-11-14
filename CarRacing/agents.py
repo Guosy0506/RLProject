@@ -96,8 +96,8 @@ class PPO_Agent(object):
         action = action.squeeze().cpu().numpy()
         return action, a_logp
 
-    def save_param(self):
-        torch.save(self.net.state_dict(), 'param/ppo_net_third.pkl')
+    def save_param(self, dir="test"):
+        torch.save(self.net.state_dict(), '{}.pkl'.format(dir))
 
     def load_param(self):
         self.net.load_state_dict(torch.load('param/ppo_net_origin.pkl', map_location=self.device))
