@@ -26,6 +26,9 @@ torch.manual_seed(args.seed)
 if use_cuda:
     torch.cuda.manual_seed(args.seed)
 
+VALID_EPI = 10
+TRAIN_EPI = 100000
+
 if __name__ == "__main__":
     # different mode is different in the function: select_action
     mode = 'VALIDATION' if args.valid else 'TRAIN'
@@ -49,22 +52,21 @@ if __name__ == "__main__":
     training_records = []
     running_score = 0
     state = env.reset()
-    Episode = 10 if args.valid else 100000
+    Episode = VALID_EPI if args.valid else TRAIN_EPI
     for i_ep in range(Episode):
         score = 0
         state = env.reset()
         if args.valid:  # validation mode
-            # 限制单个回合最多1000step，避免原地打转
             while True:
                 action, _ = agent.select_action(state)
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
                 score += reward
                 state = state_
                 if die:
-                    print("End Episode because die")
+                    print("Episode is terminated")
                     break
                 if truncated:
-                    print("End Episode because truncated")
+                    print("Episode is truncated")
                     break
             print('Ep {}\tScore: {:.2f}\t'.format(i_ep, score))
         else:  # training mode

@@ -27,8 +27,6 @@ class CarRacingEnv(object):
     def reset(self):
         self.counter = 0
         self.av_r = self.reward_memory()
-        # seed = torch.round(100 * torch.rand(1)).numpy().astype(np.int)[0]
-        # img_rgb, _ = self.env.reset(seed=seed)
         img_rgb, _ = self.env.reset()
         img_gray = self.rgb2gray(img_rgb)
         self.stack = [img_gray] * self.img_stack  # four frames for decision
