@@ -1,6 +1,9 @@
+import time
+
 import gym
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 
 class CarRacingEnv(object):
@@ -40,11 +43,18 @@ class CarRacingEnv(object):
             # don't penalize "die state"
             if terminated:
                 reward += 100
-            # green penalty
-            if np.mean(img_rgb[:, :, 1]) > 185.0:
-                reward -= 0.05
+            # grass penalty
+            on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
+            if on_grass > 160:
+                reward -= 0.06
+                ## to test the values of on_grass, un-comment the codes below:
+                # plt.imshow(img_rgb[64:78, 42:54, 1])
+                # plt.title("{}".format(on_grass))
+                # plt.pause(0.2)
+            elif on_grass > 140:
+                reward -= 0.02
             total_reward += reward
-            # if no reward recently, end the episode
+            # if no reward recently, end the ccepisode
             if self.av_r(reward) <= -0.1 or terminated:
                 die = True
             if die or truncated:
@@ -66,9 +76,10 @@ class CarRacingEnv(object):
 
     @staticmethod
     def reward_memory():
-        # record reward for last 100 steps
+        # only calculate ave_reward for last {length} steps, if smaller
+        # than -0.1,the episode is died
         count = 0
-        length = 100
+        length = 70
         history = np.zeros(length)
 
         def memory(reward):
@@ -78,3 +89,5 @@ class CarRacingEnv(object):
             return np.mean(history)
 
         return memory
+
+

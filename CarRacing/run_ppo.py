@@ -50,11 +50,10 @@ if __name__ == "__main__":
 
     training_records = []
     running_score = 0
-    is_update = False
     Episode = VALID_EPI if args.valid else TRAIN_EPI
+    seed = torch.randint(0, 100000, (1,)).item()
     for i_ep in range(Episode):
         score = 0
-        seed = 3357
         if args.changemap:
             seed = torch.randint(0, 100000, (1,)).item()
         state = env.reset(seed=seed)
@@ -76,9 +75,8 @@ if __name__ == "__main__":
                 action, a_logp = agent.select_action(state)
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
                 if agent.store_memory((state, action, a_logp, reward, state_)):
-                    is_update = True  # agent params is updated
-                    print('updating')
-                    agent.update()
+                    agent.update()  # print("params updating")
+                    agent.save_param(i_ep)  # print("save net params in param/ppo_{i_ep}")
                 score += reward
                 state = state_
                 if die or truncated:
@@ -90,11 +88,6 @@ if __name__ == "__main__":
                 if args.vis:
                     draw_reward(xdata=i_ep, ydata=running_score)
                 print('Ep {}\tLast score: {:.2f}\tMoving average score: {:.2f}'.format(i_ep, score, running_score))
-                if is_update:
-                    dir = "param/{}_{}".format("ppo", i_ep)
-                    agent.save_param(dir)
-                    print("save net params in {}".format(dir))
-                    is_update = False
             if running_score > env.reward_threshold:
                 print("Solved! Running reward is now {} and the last episode runs to {}!".format(running_score, score))
                 break

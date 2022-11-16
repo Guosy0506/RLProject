@@ -96,8 +96,10 @@ class PPO_Agent(object):
         action = action.squeeze().cpu().numpy()
         return action, a_logp
 
-    def save_param(self, dir="test"):
-        torch.save(self.net.state_dict(), '{}.pkl'.format(dir))
+    def save_param(self, epi):
+        _dir = "param/{}_{}.pkl".format("ppo", epi)
+        torch.save(self.net.state_dict(), _dir)
+        print("update and save params in {}".format(_dir))
 
     def load_param(self):
         self.net.load_state_dict(torch.load('param/ppo_net_origin.pkl', map_location=self.device))
@@ -112,6 +114,7 @@ class PPO_Agent(object):
             return False
 
     def update(self):
+        print("params updating")
         self.training_step += 1
         s = torch.tensor(self.buffer['s'], dtype=torch.double).to(self.device)
         a = torch.tensor(self.buffer['a'], dtype=torch.double).to(self.device)
