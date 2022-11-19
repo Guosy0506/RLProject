@@ -1,12 +1,11 @@
 import argparse
-import os
 
 import numpy as np
 import torch
 
 from env import CarRacingEnv
 from agents import PPO_Agent
-from utils import DrawLine
+from utils.util import DrawLine
 
 parser = argparse.ArgumentParser(description='Train a PPO agent for the CarRacing-v0')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G', help='discount factor (default: 0.99)')
@@ -74,10 +73,12 @@ if __name__ == "__main__":
             for t in range(1000):
                 action, a_logp = agent.select_action(state)
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
-                if agent.store_memory((state, action, a_logp, reward, state_)):
-                    agent.update()  # print("params updating")
-                    agent.save_param(i_ep)  # print("save net params in param/ppo_{i_ep}")
-                score += reward
+                ##  in the first 20 flames, gym is loading the Scenes and the state_ is NOT suitable as an input to the network
+                if t > 20.0/args.action_repeat:
+                    if agent.store_memory((state, action, a_logp, reward, state_)):
+                        agent.update()  # print("params updating")
+                        agent.save_param(i_ep)  # print("save net params in param/ppo_{i_ep}")
+                    score += reward
                 state = state_
                 if die or truncated:
                     break
