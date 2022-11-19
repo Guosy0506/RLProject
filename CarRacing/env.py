@@ -47,14 +47,13 @@ class CarRacingEnv(object):
             on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
             if on_grass > 160:
                 reward -= 0.06
-                ## to test the values of on_grass, un-comment the codes below:
+                ##  to test the values of on_grass, un-comment the codes below:
                 # plt.imshow(img_rgb[64:78, 42:54, 1])
                 # plt.title("{}".format(on_grass))
                 # plt.pause(0.2)
-            elif on_grass > 140:
-                reward -= 0.02
             total_reward += reward
-            # if no reward recently, end the ccepisode
+            # if no reward recently, end the episode
+            print(reward)
             if self.av_r(reward) <= -0.1 or terminated:
                 die = True
             if die or truncated:
@@ -89,5 +88,3 @@ class CarRacingEnv(object):
             return np.mean(history)
 
         return memory
-
-
