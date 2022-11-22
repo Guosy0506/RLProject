@@ -12,16 +12,16 @@ class Net(nn.Module):
     Actor-Critic Network for PPO
     """
 
-    def __init__(self, img_stack):
+    def __init__(self, args):
         super(Net, self).__init__()
-        self.cnn_base = nn.Sequential(  # input shape (4, 96, 96)
-            nn.Conv2d(img_stack, 8, kernel_size=4, stride=2),
+        self.cnn_base = nn.Sequential(  # input shape (4, 84, 84)
+            nn.Conv2d(args.img_stack, 8, kernel_size=4, stride=2),
             nn.ReLU(),  # activation
-            nn.Conv2d(8, 16, kernel_size=3, stride=2),  # (8, 47, 47)
+            nn.Conv2d(8, 16, kernel_size=3, stride=2),  # (8, 41, 41)
             nn.ReLU(),  # activation
-            nn.Conv2d(16, 32, kernel_size=3, stride=2),  # (16, 23, 23)
+            nn.Conv2d(16, 32, kernel_size=2, stride=2),  # (16, 20, 20)
             nn.ReLU(),  # activation
-            nn.Conv2d(32, 64, kernel_size=3, stride=2),  # (32, 11, 11)
+            nn.Conv2d(32, 64, kernel_size=2, stride=2),  # (32, 10, 10)
             nn.ReLU(),  # activation
             nn.Conv2d(64, 128, kernel_size=3, stride=1),  # (64, 5, 5)
             nn.ReLU(),  # activation
@@ -63,33 +63,39 @@ class PPO_Agent(object):
     device = None
     transition = None
 
-    def __init__(self, img_stack, gamma, device, mode='TRAIN'):
-        self.img_stack = img_stack
-        self.gamma = gamma
+    # def __init__(self, img_stack, gamma, device, mode='TRAIN'):
+    def __init__(self, args, device):
+        self.img_stack = args.img_stack
+        self.gamma = args.gamma
         self.device = device
-        self.transition = np.dtype([('s', np.float64, (img_stack, 96, 96)), ('a', np.float64, (3,)), ('a_logp', np.float64),
-                                    ('r', np.float64), ('s_', np.float64, (img_stack, 96, 96))])
+        self.transition = np.dtype([('s', np.float64, (args.img_stack, 84, 84)), ('a', np.float64, (3,)), ('a_logp', np.float64),
+                                    ('r', np.float64), ('s_', np.float64, (args.img_stack, 84, 84))])
         self.training_step = 0
-        self.net = Net(img_stack).double().to(self.device)
+        self.net = Net(args).double().to(self.device)
         self.buffer = np.empty(self.buffer_capacity, dtype=self.transition)
         self.counter = 0
-        self.mode = mode
-        print("Agent mode is {}.".format(mode))
-        if self.mode == "VALIDATION":
+        self.istrain = args.train
+        self.lr = args.lr  # Learning rate
+        self.use_lr_decay = args.use_lr_decay
+        self.max_train_steps = args.max_train_steps
+        if self.istrain:
+            print("Agent mode is TRAIN.")
+        else:
             self.load_param()
-        self.optimizer = optim.Adam(self.net.parameters(), lr=1e-3)
+            print("Agent mode is VALIDATION.")
+        self.optimizer = optim.Adam(self.net.parameters(), lr=args.lr)
 
     def select_action(self, state):
         state = torch.from_numpy(state).double().to(self.device).unsqueeze(0)
         action = None
         with torch.no_grad():
             alpha, beta = self.net(state)[0]
-        if self.mode == 'TRAIN':
+        if self.istrain:
             dist = Beta(alpha, beta)
             action = dist.sample()
             a_logp = dist.log_prob(action).sum(dim=1)
             a_logp = a_logp.item()
-        if self.mode == 'VALIDATION':
+        else:
             action = alpha / (alpha + beta)
             a_logp = []
         assert action is not None, 'mode is wrong!'
@@ -145,3 +151,12 @@ class PPO_Agent(object):
                 loss.backward()
                 # nn.utils.clip_grad_norm_(self.net.parameters(), self.max_grad_norm)
                 self.optimizer.step()
+
+        if self.use_lr_decay:  # Trick 6:learning rate Decay
+            self.lr_decay(self.training_step)
+
+    def lr_decay(self, total_steps):
+        lr_now = self.lr * (1 - total_steps / self.max_train_steps)
+        for p in self.optimizer.param_groups:
+            p['lr'] = lr_now
+

@@ -9,13 +9,16 @@ from utils.util import DrawLine
 
 parser = argparse.ArgumentParser(description='Train a PPO agent for the CarRacing-v0')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G', help='discount factor (default: 0.99)')
+parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate of actor")
+parser.add_argument("--max_train_steps", type=int, default=int(3e6), help=" Maximum number of training steps")
 parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='repeat action in N frames (default: 8)')
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
 parser.add_argument('--seed', type=int, default=0, metavar='N', help='random seed (default: 0)')
+parser.add_argument("--use_lr_decay", type=bool, default=True, help="automatic decay learning rate")
+parser.add_argument('--use_changing_map', type=bool, default=True, help='whether the map is changing')
 parser.add_argument('--render', action='store_true', help='render the environment')
 parser.add_argument('--vis', action='store_true', help='use visdom')
-parser.add_argument('--changemap', action='store_true', help='change the map to train or validation')
-parser.add_argument('--valid', action='store_true', help='if true, valid the net')
+parser.add_argument('--train', action='store_true', help='if true, train the net')
 parser.add_argument(
     '--log-interval', type=int, default=10, metavar='N', help='interval between training status logs (default: 10)')
 args = parser.parse_args()
@@ -31,14 +34,8 @@ TRAIN_EPI = 100000
 
 if __name__ == "__main__":
     # different mode is different in the function: select_action
-    mode = 'VALIDATION' if args.valid else 'TRAIN'
-    agent = PPO_Agent(img_stack=args.img_stack,
-                      gamma=args.gamma,
-                      device=device,
-                      mode=mode)
-    env = CarRacingEnv(is_render=args.render,
-                       img_stack=args.img_stack,
-                       action_repeat=args.action_repeat)
+    agent = PPO_Agent(args, device=device)
+    env = CarRacingEnv(args)
 
     # test args param
     if args.vis:
@@ -49,27 +46,14 @@ if __name__ == "__main__":
 
     training_records = []
     running_score = 0
-    Episode = VALID_EPI if args.valid else TRAIN_EPI
+    Episode = TRAIN_EPI if args.train else VALID_EPI
     seed = torch.randint(0, 100000, (1,)).item()
     for i_ep in range(Episode):
         score = 0
-        if args.changemap:
+        if args.use_changing_map:
             seed = torch.randint(0, 100000, (1,)).item()
         state = env.reset(seed=seed)
-        if args.valid:  # validation mode
-            while True:
-                action, _ = agent.select_action(state)
-                state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
-                score += reward
-                state = state_
-                if die:
-                    print("Episode is terminated")
-                    break
-                if truncated:
-                    print("Episode is truncated")
-                    break
-            print('Ep {}\tScore: {:.2f}\tSeed {}'.format(i_ep, score, seed))
-        else:  # training mode
+        if args.train:  # training mode
             for t in range(1000):
                 action, a_logp = agent.select_action(state)
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
@@ -92,4 +76,17 @@ if __name__ == "__main__":
             if running_score > env.reward_threshold:
                 print("Solved! Running reward is now {} and the last episode runs to {}!".format(running_score, score))
                 break
+        else:   # validation mode
+            while True:
+                action, _ = agent.select_action(state)
+                state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+                score += reward
+                state = state_
+                if die:
+                    print("Episode is terminated")
+                    break
+                if truncated:
+                    print("Episode is truncated")
+                    break
+            print('Ep {}\tScore: {:.2f}\tSeed {}'.format(i_ep, score, seed))
     env.env.close()

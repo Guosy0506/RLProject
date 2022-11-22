@@ -11,18 +11,15 @@ class CarRacingEnv(object):
     Environment wrapper for CarRacing
     """
 
-    def __init__(self,
-                 is_render,
-                 img_stack,
-                 action_repeat
-                 ):
-        if is_render:
+    # def __init__(self, is_render, img_stack, action_repeat):
+    def __init__(self, args):
+        if args.render:
             self.env = gym.make('CarRacing-v2', render_mode='human')
         else:
             self.env = gym.make('CarRacing-v2')
         self.reward_threshold = self.env.spec.reward_threshold
-        self.img_stack = img_stack
-        self.action_repeat = action_repeat
+        self.img_stack = args.img_stack
+        self.action_repeat = args.action_repeat
         self.counter = None
         self.av_r = None
         self.stack = None
@@ -53,7 +50,6 @@ class CarRacingEnv(object):
                 # plt.pause(0.2)
             total_reward += reward
             # if no reward recently, end the episode
-            print(reward)
             if self.av_r(reward) <= -0.1 or terminated:
                 die = True
             if die or truncated:
@@ -71,7 +67,7 @@ class CarRacingEnv(object):
         if norm:
             # normalize
             gray = gray / 128. - 1.
-        return gray
+        return gray[0:84, 6:90]  # in python,0:84 means index from 0 to 83
 
     @staticmethod
     def reward_memory():
