@@ -14,9 +14,10 @@ def main():
         gray = np.dot(state[..., :], [0.299, 0.587, 0.114])
         # gray = gray / 128. - 1.
         # gray = gray[0:84, 6:90]
+        state = state[0:84, 6:90]
         print(gray.shape)
-        plt.imshow(gray)
-        plt.pause(5)
+        plt.imshow(state)
+        plt.pause(2)
         if terminated:
             print("Episode is terminated!")
             break
