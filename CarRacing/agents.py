@@ -68,8 +68,8 @@ class PPO_Agent(object):
         self.img_stack = args.img_stack
         self.gamma = args.gamma
         self.device = device
-        self.transition = np.dtype([('s', np.float64, (args.img_stack, 84, 84)), ('a', np.float64, (3,)), ('a_logp', np.float64),
-                                    ('r', np.float64), ('s_', np.float64, (args.img_stack, 84, 84))])
+        self.transition = np.dtype([('s', np.float32, (args.img_stack, 84, 84)), ('a', np.float32, (3,)), ('a_logp', np.float32),
+                                    ('r', np.float32), ('s_', np.float32, (args.img_stack, 84, 84))])
         self.training_step = 0
         self.net = Net(args).double().to(self.device)
         self.buffer = np.empty(self.buffer_capacity, dtype=self.transition)
@@ -119,15 +119,14 @@ class PPO_Agent(object):
         else:
             return False
 
-    def update(self):
-        print("params updating")
+    def update(self, total_step):
         self.training_step += 1
-        s = torch.tensor(self.buffer['s'], dtype=torch.double).to(self.device)
-        a = torch.tensor(self.buffer['a'], dtype=torch.double).to(self.device)
-        r = torch.tensor(self.buffer['r'], dtype=torch.double).to(self.device).view(-1, 1)
-        s_ = torch.tensor(self.buffer['s_'], dtype=torch.double).to(self.device)
+        s = torch.tensor(self.buffer['s'], dtype=torch.float32).to(self.device)
+        a = torch.tensor(self.buffer['a'], dtype=torch.float32).to(self.device)
+        r = torch.tensor(self.buffer['r'], dtype=torch.float32).to(self.device).view(-1, 1)
+        s_ = torch.tensor(self.buffer['s_'], dtype=torch.float32).to(self.device)
 
-        old_a_logp = torch.tensor(self.buffer['a_logp'], dtype=torch.double).to(self.device).view(-1, 1)
+        old_a_logp = torch.tensor(self.buffer['a_logp'], dtype=torch.float32).to(self.device).view(-1, 1)
 
         with torch.no_grad():
             target_v = r + self.gamma * self.net(s_)[1]
@@ -153,10 +152,10 @@ class PPO_Agent(object):
                 self.optimizer.step()
 
         if self.use_lr_decay:  # Trick 6:learning rate Decay
-            self.lr_decay(self.training_step)
+            self.lr_decay(total_step)
 
-    def lr_decay(self, total_steps):
-        lr_now = self.lr * (1 - total_steps / self.max_train_steps)
+    def lr_decay(self, total_step):
+        lr_now = self.lr * (1 - total_step / self.max_train_steps)
         for p in self.optimizer.param_groups:
             p['lr'] = lr_now
 
