@@ -121,10 +121,10 @@ class PPO_Agent(object):
 
     def update(self, total_step):
         self.training_step += 1
-        s = torch.tensor(self.buffer['s'], dtype=torch.float32).to(self.device)
+        s = torch.tensor(self.buffer['s'], dtype=torch.float32, device=self.device)
         a = torch.tensor(self.buffer['a'], dtype=torch.float32).to(self.device)
-        r = torch.tensor(self.buffer['r'], dtype=torch.float32).to(self.device).view(-1, 1)
-        s_ = torch.tensor(self.buffer['s_'], dtype=torch.float32).to(self.device)
+        r = torch.tensor(self.buffer['r'], dtype=torch.float32, device=self.device).view(-1, 1)
+        s_ = torch.tensor(self.buffer['s_'], dtype=torch.float32, device=self.device).to(self.device)
 
         old_a_logp = torch.tensor(self.buffer['a_logp'], dtype=torch.float32).to(self.device).view(-1, 1)
 
