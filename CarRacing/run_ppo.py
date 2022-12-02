@@ -45,7 +45,6 @@ if __name__ == "__main__":
         print("render is true")
 
     training_records = []
-    total_step = 0
     running_score = 0
     Episode = TRAIN_EPI if args.train else VALID_EPI
     seed = torch.randint(0, 100000, (1,)).item()
@@ -60,10 +59,8 @@ if __name__ == "__main__":
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
                 ##  in the first 20 flames, gym is loading the Scenes and the state_ is NOT suitable as an input to the network
                 if t > 20.0/args.action_repeat:
-                    # total_step += 1
                     if agent.store_memory((state, action, a_logp, reward, state_)):
                         print("param updating")
-                        print("total step is {}".format(total_step))
                         agent.update(running_score, env.reward_threshold)
                         agent.save_param(i_ep)  # print("update and save net params in param/ppo_{i_ep}")
                     score += reward

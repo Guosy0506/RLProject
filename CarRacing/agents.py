@@ -55,7 +55,7 @@ class PPO_Agent(object):
     max_grad_norm = 0.5
     clip_param = 0.1  # epsilon in clipped loss
     ppo_epoch = 10
-    buffer_capacity, batch_size = 2000, 128
+    buffer_capacity, batch_size = 1500, 128
 
     # 参数声明，传参初始化
     img_stack = None
@@ -120,14 +120,18 @@ class PPO_Agent(object):
             return False
 
     def update(self, running_score, reward_threshold):
-        self.training_step += 1
-        s = torch.cuda.DoubleTensor(self.buffer['s'], device=self.device)
-        # s = torch.tensor(self.buffer['s'], dtype=torch.double, device=self.device)
-        a = torch.cuda.DoubleTensor(self.buffer['a'], device=self.device)
-        r = torch.cuda.DoubleTensor(self.buffer['r'], device=self.device).view(-1, 1)
-        s_ = torch.cuda.DoubleTensor(self.buffer['s_'], device=self.device)
-
-        old_a_logp = torch.cuda.DoubleTensor(self.buffer['a_logp'], device=self.device).view(-1, 1)
+        if self.device is "cuda":
+            s = torch.cuda.DoubleTensor(self.buffer['s'], device=self.device)
+            a = torch.cuda.DoubleTensor(self.buffer['a'], device=self.device)
+            r = torch.cuda.DoubleTensor(self.buffer['r'], device=self.device).view(-1, 1)
+            s_ = torch.cuda.DoubleTensor(self.buffer['s_'], device=self.device)
+            old_a_logp = torch.cuda.DoubleTensor(self.buffer['a_logp'], device=self.device).view(-1, 1)
+        else:
+            s = torch.tensor(self.buffer['s'], dtype=torch.double, device=self.device)
+            a = torch.tensor(self.buffer['a'], dtype=torch.double, device=self.device)
+            r = torch.tensor(self.buffer['r'], dtype=torch.double, device=self.device).view(-1,1)
+            s_ = torch.tensor(self.buffer['s_'], dtype=torch.double, device=self.device)
+            old_a_logp = torch.tensor(self.buffer['a_logp'], dtype=torch.double, device=self.device)
 
         with torch.no_grad():
             target_v = r + self.gamma * self.net(s_)[1]
