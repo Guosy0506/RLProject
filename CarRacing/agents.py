@@ -119,14 +119,15 @@ class PPO_Agent(object):
         else:
             return False
 
-    def update(self, total_step):
+    def update(self, running_score, reward_threshold):
         self.training_step += 1
-        s = torch.tensor(self.buffer['s'], dtype=torch.double, device=self.device)
-        a = torch.tensor(self.buffer['a'], dtype=torch.double).to(self.device)
-        r = torch.tensor(self.buffer['r'], dtype=torch.double, device=self.device).view(-1, 1)
-        s_ = torch.tensor(self.buffer['s_'], dtype=torch.double, device=self.device).to(self.device)
+        s = torch.cuda.DoubleTensor(self.buffer['s'], device=self.device)
+        # s = torch.tensor(self.buffer['s'], dtype=torch.double, device=self.device)
+        a = torch.cuda.DoubleTensor(self.buffer['a'], device=self.device)
+        r = torch.cuda.DoubleTensor(self.buffer['r'], device=self.device).view(-1, 1)
+        s_ = torch.cuda.DoubleTensor(self.buffer['s_'], device=self.device)
 
-        old_a_logp = torch.tensor(self.buffer['a_logp'], dtype=torch.double).to(self.device).view(-1, 1)
+        old_a_logp = torch.cuda.DoubleTensor(self.buffer['a_logp'], device=self.device).view(-1, 1)
 
         with torch.no_grad():
             target_v = r + self.gamma * self.net(s_)[1]
@@ -152,10 +153,10 @@ class PPO_Agent(object):
                 self.optimizer.step()
 
         if self.use_lr_decay:  # Trick 6:learning rate Decay
-            self.lr_decay(total_step)
+            self.lr_decay(running_score, reward_threshold)
 
-    def lr_decay(self, total_step):
-        lr_now = self.lr * (1 - total_step / self.max_train_steps)
+    def lr_decay(self, cumulative_reward, reward_threshold):
+        lr_now = self.lr * (1 - cumulative_reward / reward_threshold)
         for p in self.optimizer.param_groups:
             p['lr'] = lr_now
 
