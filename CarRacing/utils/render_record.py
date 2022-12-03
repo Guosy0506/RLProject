@@ -15,20 +15,51 @@ class Env(object):
         # self.env = gym.make('CarRacing-v2', render_mode="human")
         self.env = gym.make('CarRacing-v2', render_mode="human").unwrapped
         self.seed = seed
+        self.av_r = None
 
     def reset(self):
+        self.av_r = self.reward_memory()
         img_rgb, _ = self.env.reset(seed=self.seed)
         img_gray = self.rgb2gray(img_rgb)
         self.stack = [img_gray] * 4
         return np.array(self.stack)
 
     def step(self, action):
-        img_rgb, _, terminated, truncated, _ = self.env.step(action)
+        total_reward = 0
+        die = False
+        for i in range(8):
+            img_rgb, reward, terminated, truncated, _ = self.env.step(action)
+            on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
+            if terminated:
+                reward += 100
+            if on_grass > 160:
+                reward -= 0.06
+            if self.av_r(reward) <= -0.1 or terminated:
+                die = True
+            total_reward += reward
+            if die or truncated:
+                break
         img_gray = self.rgb2gray(img_rgb)
         self.stack.pop(0)
         self.stack.append(img_gray)
         assert len(self.stack) == 4
-        return np.array(self.stack), terminated, truncated, img_rgb
+        return np.array(self.stack), total_reward, die, truncated, img_rgb
+
+    @staticmethod
+    def reward_memory():
+        # only calculate ave_reward for last {length} steps, if smaller
+        # than -0.1,the episode is died
+        count = 0
+        length = 70
+        history = np.zeros(length)
+
+        def memory(reward):
+            nonlocal count
+            history[count] = reward
+            count = (count + 1) % length
+            return np.mean(history)
+
+        return memory
 
     @staticmethod
     def rgb2gray(rgb, norm=True):
@@ -36,7 +67,7 @@ class Env(object):
         if norm:
             # normalize
             gray = gray.astype('float32') / 128 - 1
-        return gray
+        return gray[0:84, 6:90]
 
 
 class Net(nn.Module):
@@ -46,14 +77,28 @@ class Net(nn.Module):
 
     def __init__(self):
         super(Net, self).__init__()
-        self.cnn_base = nn.Sequential(  # input shape (4, 96, 96)
+        # self.cnn_base = nn.Sequential(  # input shape (4, 96, 96)
+        #     nn.Conv2d(4, 8, kernel_size=4, stride=2),
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(8, 16, kernel_size=3, stride=2),  # (8, 47, 47)
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(16, 32, kernel_size=3, stride=2),  # (16, 23, 23)
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(32, 64, kernel_size=3, stride=2),  # (32, 11, 11)
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(64, 128, kernel_size=3, stride=1),  # (64, 5, 5)
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(128, 256, kernel_size=3, stride=1),  # (128, 3, 3)
+        #     nn.ReLU(),  # activation
+        # )  # output shape (256, 1, 1)
+        self.cnn_base = nn.Sequential(  # input shape (4, 84, 84)
             nn.Conv2d(4, 8, kernel_size=4, stride=2),
             nn.ReLU(),  # activation
-            nn.Conv2d(8, 16, kernel_size=3, stride=2),  # (8, 47, 47)
+            nn.Conv2d(8, 16, kernel_size=3, stride=2),  # (8, 41, 41)
             nn.ReLU(),  # activation
-            nn.Conv2d(16, 32, kernel_size=3, stride=2),  # (16, 23, 23)
+            nn.Conv2d(16, 32, kernel_size=2, stride=2),  # (16, 20, 20)
             nn.ReLU(),  # activation
-            nn.Conv2d(32, 64, kernel_size=3, stride=2),  # (32, 11, 11)
+            nn.Conv2d(32, 64, kernel_size=2, stride=2),  # (32, 10, 10)
             nn.ReLU(),  # activation
             nn.Conv2d(64, 128, kernel_size=3, stride=1),  # (64, 5, 5)
             nn.ReLU(),  # activation
@@ -99,9 +144,15 @@ class Agent():
         action = action.squeeze().cpu().numpy()
         return action
 
-    def load_param(self, index):
-        self.net.load_state_dict(torch.load('D:/git/project/CarRacing/PPOinv2/param/ppo_{}.pkl'.format(index),
-                                            map_location=torch.device("cpu")))
+    def load_param(self, index, path):
+        _path = '{}/param/ppo_{}.pkl'.format(path, index)
+        try:
+            f = open(_path)
+            f.close()
+        except IOError:
+            return False
+        self.net.load_state_dict(torch.load(_path, map_location=torch.device("cpu")))
+        return True
 
 
 def create_gif(image_list, gif_name, duration=1.0):
@@ -119,47 +170,52 @@ def create_gif(image_list, gif_name, duration=1.0):
 
 
 def main():
-    record = np.load("D:/git/project/CarRacing/PPOinv2/training_records.npy")
+    path = "D:/git/project/CarRacing/ModifyPPOinv2"
+    record = np.load("{}/training_records.npy".format(path))
     i_ep = record[:, 0]
     score = record[:, 1]
     running_score = record[:, 2]
     seeds = record[:, 3]
-    # 1820 (1840 1890) 1940 1960 3480(better) 3490 3510 3520 (3540) (3660(缺少横向维度数据) 3700) 4120 5210 5230 5250
-    # 8460 8480(best) 8500 8510(G) 8570 8630
+    # index_list = [1820 1840 1890 1940 1960 3480 3490 3510 3520 3540 3660
+    #               3700 4120 5210 5230 5250 8460 8480 8500 8510 8570 8630] #PPOinv2
+    # index_list = [3013, 3030, 3047, 3063, 3081, 3098, 3114, 3166, 3182, 3199, 3216, 3251, 3285, 3339,
+    #               3357, 3431, 3490, 3530, 3548, 3637, 3690, 3707, 3725, 3798, 3817, 3852, 3870] # ModifyPPOinv2
     is_save_gif = False
-    index_list = [1820, 1840, 1890, 1940, 1960, 3480, 3490, 3510, 3520, 3540, 3660,
-                  3700, 4120, 5210, 5230, 5250, 8460, 8480, 8500, 8510, 8570, 8630]
-    index_list = [3480]
-    for index in index_list:
-        print(index)
+    reward_threshold = 650
+    agent = Agent()
+    for index in i_ep:
+        if index < 3889:
+            continue
+        index = index.astype(int).item()
         seed = seeds[index].astype(int).item()
-        print("seed is {}".format(seed))
-        print(i_ep[index].astype(int).item())
+        print("Epi_{}, seed is {}".format(index, seed))
+        if agent.load_param(index, path):
+            print("load param in Epi_{}".format(index))
         env = Env(seed=seed)
-        agent = Agent()
-        agent.load_param(index)
         image_list = []
         # 环境初始化
         state = env.reset()
+        total_reward = 0
         # 循环交互
         while True:
             # 从动作空间随机获取一个动作
             action = agent.select_action(state)
             # agent与环境进行一步交互
-            state, terminated, truncated, image = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+            state, reward, died, truncated, image = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+            total_reward += reward
             image_list.append(image)
             # 判断当前episode 是否完成
-            if terminated:
-                print("Episode is terminated!")
+            if died:
+                print("Episode is FAIL! Reward is {}".format(total_reward))
                 break
             if truncated:
-                print("Episode is truncated!")
+                print("Episode is SUCCESS! Reward is {}".format(total_reward))
                 break
         env.env.close()
-        if is_save_gif:
+        if is_save_gif and total_reward >= reward_threshold:
             fps = 50
-            gif_name = 'D:/git/project/CarRacing/PPOinv2/gif/{}.gif'.format(index)
-            imageio.mimwrite(gif_name, image_list, fps=fps)
+            gif_name = '{}/gif/{}.gif'.format(path, index)
+            imageio.mimwrite(gif_name, image_list, fps=fps)  # 覆写当前文件
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import numpy as np
 
 
 def main():
-    record = np.load("D:/git/project/CarRacing/PPOinv2/training_records.npy")
+    record = np.load("D:/git/project/CarRacing/ModifyPPOinv2/training_records.npy")
     i_ep = record[:, 0]
     score = record[:, 1]
     running_score = record[:, 2]
@@ -16,7 +16,7 @@ def main():
     plt.scatter(i_ep, score, s=s)
     plt.plot(i_ep, running_score, color='k')
     plt.legend(['reward in each episode', 'average reward'])
-    plt.title('PPO in CarRacing-v2')
+    plt.title('ModifyPPO in CarRacing-v2')
     plt.xlabel('episode')
     plt.show()
 
