@@ -13,11 +13,13 @@ class Env(object):
 
     def __init__(self, seed):
         # self.env = gym.make('CarRacing-v2', render_mode="human")
-        self.env = gym.make('CarRacing-v2', render_mode="human").unwrapped
+        self.env = gym.make('CarRacing-v2', render_mode="human")
         self.seed = seed
         self.av_r = None
+        self.timestep = None
 
     def reset(self):
+        self.timestep = 0
         self.av_r = self.reward_memory()
         img_rgb, _ = self.env.reset(seed=self.seed)
         img_gray = self.rgb2gray(img_rgb)
@@ -37,13 +39,14 @@ class Env(object):
             if self.av_r(reward) <= -0.1 or terminated:
                 die = True
             total_reward += reward
+            self.timestep += 1
             if die or truncated:
                 break
         img_gray = self.rgb2gray(img_rgb)
         self.stack.pop(0)
         self.stack.append(img_gray)
         assert len(self.stack) == 4
-        return np.array(self.stack), total_reward, die, truncated, img_rgb
+        return np.array(self.stack), total_reward, die, truncated, img_rgb, self.timestep
 
     @staticmethod
     def reward_memory():
@@ -198,20 +201,22 @@ def main():
         # 环境初始化
         state = env.reset()
         total_reward = 0
+        total_step = 0
         # 循环交互
         while True:
             # 从动作空间随机获取一个动作
             action = agent.select_action(state)
             # agent与环境进行一步交互
-            state, reward, died, truncated, image = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+            state, reward, died, truncated, image, timestep = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
             total_reward += reward
+            total_step = timestep
             image_list.append(image)
             # 判断当前episode 是否完成
             if died:
-                print("Episode is FAIL! \nReward is {}".format(total_reward))
+                print("Episode is FAIL! Reward is {:.2f}, STEP is {}".format(total_reward, total_step))
                 break
             if truncated:
-                print("Episode is SUCCESS! \nReward is {}".format(total_reward))
+                print("Episode is SUCCESS! Reward is {:.2f}, STEP is {}".format(total_reward, total_step))
                 break
         if is_save_gif and total_reward >= reward_threshold:
             fps = 50
