@@ -55,7 +55,7 @@ class PPO_Agent(object):
     max_grad_norm = 0.5
     clip_param = 0.1  # epsilon in clipped loss
     ppo_epoch = 10
-    buffer_capacity, batch_size = 1500, 128
+    buffer_capacity, batch_size = 2000, 128
 
     # 参数声明，传参初始化
     img_stack = None
@@ -81,7 +81,7 @@ class PPO_Agent(object):
         if self.istrain:
             print("Agent mode is TRAIN.")
         else:
-            self.load_param()
+            self.load_param(path='../ModifyPPOinv2/param/ppo_3870.pkl')
             print("Agent mode is VALIDATION.")
         self.optimizer = optim.Adam(self.net.parameters(), lr=args.lr)
 
@@ -107,8 +107,8 @@ class PPO_Agent(object):
         torch.save(self.net.state_dict(), _dir)
         print("update and save params in {}".format(_dir))
 
-    def load_param(self):
-        self.net.load_state_dict(torch.load('../ModifyPPOinv2/param/ppo_3870.pkl', map_location=self.device))
+    def load_param(self, path):
+        self.net.load_state_dict(torch.load(path, map_location=self.device))
 
     def store_memory(self, transition):
         self.buffer[self.counter] = transition

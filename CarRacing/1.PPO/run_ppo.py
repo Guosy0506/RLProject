@@ -19,6 +19,7 @@ parser.add_argument('--use_changing_map', type=bool, default=True, help='whether
 parser.add_argument('--render', action='store_true', help='render the environment')
 parser.add_argument('--vis', action='store_true', help='use visdom')
 parser.add_argument('--train', action='store_true', help='if true, train the net')
+parser.add_argument('--transfer_learning', action='store_true', help='if true, transfer_learning')
 parser.add_argument(
     '--log-interval', type=int, default=10, metavar='N', help='interval between training status logs (default: 10)')
 args = parser.parse_args()
@@ -36,7 +37,8 @@ if __name__ == "__main__":
     # different mode is different in the function: select_action
     agent = PPO_Agent(args, device=device)
     env = CarRacingEnv(args)
-
+    if args.transfer_learning:
+        agent.load_param('../ModifyPPOinv2/param/ppo_3870.pkl')
     # test args param
     if args.vis:
         draw_reward = DrawLine(env="car", title="PPO", xlabel="Episode", ylabel="Moving averaged episode reward")
