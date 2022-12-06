@@ -180,6 +180,7 @@ def main():
     #               3700 4120 5210 5230 5250 8460 8480 8500 8510 8570 8630] #PPOinv2
     # index_list = [3013, 3030, 3047, 3063, 3081, 3098, 3114, 3166, 3182, 3199, 3216, 3251, 3285, 3339,
     #               3357, 3431, 3490, 3530, 3548, 3637, 3690, 3707, 3725, 3798, 3817, 3852, 3870] # ModifyPPOinv2
+    index_list = [3889, 3889, 3870]
     is_save_gif = False
     reward_threshold = 650
     agent = Agent()
@@ -187,6 +188,7 @@ def main():
         if index < 3889:
             continue
         index = index.astype(int).item()
+    # for index in index_list:
         seed = seeds[index].astype(int).item()
         print("Epi_{}, seed is {}".format(index, seed))
         if agent.load_param(index, path):
@@ -206,16 +208,16 @@ def main():
             image_list.append(image)
             # 判断当前episode 是否完成
             if died:
-                print("Episode is FAIL! Reward is {}".format(total_reward))
+                print("Episode is FAIL! \nReward is {}".format(total_reward))
                 break
             if truncated:
-                print("Episode is SUCCESS! Reward is {}".format(total_reward))
+                print("Episode is SUCCESS! \nReward is {}".format(total_reward))
                 break
-        env.env.close()
         if is_save_gif and total_reward >= reward_threshold:
             fps = 50
             gif_name = '{}/gif/{}.gif'.format(path, index)
             imageio.mimwrite(gif_name, image_list, fps=fps)  # 覆写当前文件
+    env.env.close()
 
 
 if __name__ == "__main__":
