@@ -38,7 +38,7 @@ if __name__ == "__main__":
     agent = PPO_Agent(args, device=device)
     env = CarRacingEnv(args)
     if args.transfer_learning:
-        agent.load_param('../ModifyPPOinv2/param/ppo_3870.pkl')
+        agent.load_param('ppo_3870.pkl')
     # test args param
     if args.vis:
         draw_reward = DrawLine(env="car", title="PPO", xlabel="Episode", ylabel="Moving averaged episode reward")
