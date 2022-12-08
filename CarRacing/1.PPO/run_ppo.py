@@ -1,4 +1,6 @@
 import argparse
+import time
+from time import strftime, gmtime
 
 import numpy as np
 import torch
@@ -14,12 +16,13 @@ parser.add_argument("--max_train_steps", type=int, default=int(1e7), help=" Maxi
 parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='repeat action in N frames (default: 8)')
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
 parser.add_argument('--seed', type=int, default=0, metavar='N', help='random seed (default: 0)')
-parser.add_argument("--use_lr_decay", type=bool, default=True, help="automatic decay learning rate")
-parser.add_argument('--use_changing_map', type=bool, default=True, help='whether the map is changing')
+parser.add_argument("--use_lr_decay", action='store_false', help="automatic decay learning rate (default: True)")
+parser.add_argument('--use_changing_map', action='store_false', help='change the map (default: True)')
+parser.add_argument('--time', action='store_false', help='display time (default: True)')
 parser.add_argument('--render', action='store_true', help='render the environment')
 parser.add_argument('--vis', action='store_true', help='use visdom')
 parser.add_argument('--train', action='store_true', help='if true, train the net')
-parser.add_argument('--transfer_learning', action='store_true', help='if true, transfer_learning')
+parser.add_argument('--transfer_learning', action='store_true', help='transfer_learning (default: False)')
 parser.add_argument(
     '--log-interval', type=int, default=10, metavar='N', help='interval between training status logs (default: 10)')
 args = parser.parse_args()
@@ -39,15 +42,19 @@ if __name__ == "__main__":
     env = CarRacingEnv(args)
     if args.transfer_learning:
         agent.load_param('ppo_3870.pkl')
-    # test args param
     if args.vis:
         draw_reward = DrawLine(env="car", title="PPO", xlabel="Episode", ylabel="Moving averaged episode reward")
         print("Vis is true")
     if args.render:
         print("render is true")
+    if args.time:
+        start_time = time.time()
+        print_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))
+        print("Begin at {}".format(print_time))
 
     training_records = []
     running_score = 0
+    runtime = []
     Episode = TRAIN_EPI if args.train else VALID_EPI
     seed = torch.randint(0, 100000, (1,)).item()
     for i_ep in range(Episode):
@@ -60,7 +67,7 @@ if __name__ == "__main__":
                 action, a_logp = agent.select_action(state)
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
                 ##  in the first 20 flames, gym is loading the Scenes and the state_ is NOT suitable as an input to the network
-                if t > 20.0/args.action_repeat:
+                if t > 20.0 / args.action_repeat:
                     if agent.store_memory((state, action, a_logp, reward, state_)):
                         print("param updating")
                         agent.update(running_score, env.reward_threshold)
@@ -75,11 +82,15 @@ if __name__ == "__main__":
                 np.save('training_records.npy', training_records)
                 if args.vis:
                     draw_reward(xdata=i_ep, ydata=running_score)
-                print('Ep {}\tLast score: {:.2f}\tMoving average score: {:.2f}'.format(i_ep, score, running_score))
+                if args.time:
+                    end_time = time.time()
+                    runtime = end_time - start_time
+                    runtime = strftime("%H:%M:%S", gmtime(runtime))
+                print('Ep {}\tLast score: {:.2f}\tMoving average score: {:.2f}\tTime:{}'.format(i_ep, score, running_score, runtime))
             if running_score > env.reward_threshold:
                 print("Solved! Running reward is now {} and the last episode runs to {}!".format(running_score, score))
                 break
-        else:   # validation mode
+        else:  # validation mode
             while True:
                 action, _ = agent.select_action(state)
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
