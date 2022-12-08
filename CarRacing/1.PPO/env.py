@@ -14,9 +14,9 @@ class CarRacingEnv(object):
     # def __init__(self, is_render, img_stack, action_repeat):
     def __init__(self, args):
         if args.render:
-            self.env = gym.make('CarRacing-v2', render_mode='human').unwrapped
+            self.env = gym.make('CarRacing-v2', render_mode='human')
         else:
-            self.env = gym.make('CarRacing-v2').unwrapped
+            self.env = gym.make('CarRacing-v2')
         self.reward_threshold = self.env.spec.reward_threshold
         self.img_stack = args.img_stack
         self.action_repeat = args.action_repeat
