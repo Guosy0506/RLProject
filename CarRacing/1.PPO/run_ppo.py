@@ -11,7 +11,7 @@ from env import CarRacingEnv
 from agents import PPO_Agent
 from util import DrawLine
 
-parser = argparse.ArgumentParser(description='Train a PPO agent for the CarRacing-v0')
+parser = argparse.ArgumentParser(description='Train a PPO agent for the CarRacing-v2')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G', help='discount factor (default: 0.99)')
 parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate of actor")
 parser.add_argument("--max_train_steps", type=int, default=int(1e7), help=" Maximum number of training steps")
