@@ -1,5 +1,7 @@
 import argparse
 import time
+import os
+import random
 from time import strftime, gmtime
 
 import numpy as np
@@ -29,17 +31,24 @@ args = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
-torch.manual_seed(args.seed)
-if use_cuda:
-    torch.cuda.manual_seed(args.seed)
 
 VALID_EPI = 100
 TRAIN_EPI = 100000
+
+
+def seed_torch(seed=1024):
+    torch.manual_seed(seed)  # 为CPU中设置种子
+    torch.cuda.manual_seed_all(seed)  # 为所有GPU设置种子
+    np.random.seed(seed)
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+
 
 if __name__ == "__main__":
     # different mode is different in the function: select_action
     agent = PPO_Agent(args, device=device)
     env = CarRacingEnv(args)
+    seed_torch(args.seed)
     if args.transfer_learning:
         agent.load_param('ppo_3870.pkl')
     if args.vis:
@@ -86,7 +95,8 @@ if __name__ == "__main__":
                     end_time = time.time()
                     runtime = end_time - start_time
                     runtime = strftime("%H:%M:%S", gmtime(runtime))
-                print('Ep {}\tLast score: {:.2f}\tMoving average score: {:.2f}\tTime:{}'.format(i_ep, score, running_score, runtime))
+                print('Ep {}\tLast score: {:.2f}\tMoving average score: {:.2f}\tTime:{}'.format(i_ep, score,
+                                                                                                running_score, runtime))
             if running_score > env.reward_threshold:
                 print("Solved! Running reward is now {} and the last episode runs to {}!".format(running_score, score))
                 break
