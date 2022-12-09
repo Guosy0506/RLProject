@@ -52,6 +52,9 @@ class Net(nn.Module):
 
 
 class PPO_Agent(object):
+    """
+    Agent for training
+    """
     max_grad_norm = 0.5
     clip_param = 0.1  # epsilon in clipped loss
     ppo_epoch = 10
