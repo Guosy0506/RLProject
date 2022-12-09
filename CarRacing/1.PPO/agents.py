@@ -120,18 +120,18 @@ class PPO_Agent(object):
             return False
 
     def update(self, running_score, reward_threshold):
-        if self.device == "cuda":
-            s = torch.cuda.DoubleTensor(self.buffer['s'], device=self.device)
-            a = torch.cuda.DoubleTensor(self.buffer['a'], device=self.device)
-            r = torch.cuda.DoubleTensor(self.buffer['r'], device=self.device).view(-1, 1)
-            s_ = torch.cuda.DoubleTensor(self.buffer['s_'], device=self.device)
-            old_a_logp = torch.cuda.DoubleTensor(self.buffer['a_logp'], device=self.device).view(-1, 1)
-        else:
-            s = torch.tensor(self.buffer['s'], dtype=torch.double, device=self.device)
-            a = torch.tensor(self.buffer['a'], dtype=torch.double, device=self.device)
-            r = torch.tensor(self.buffer['r'], dtype=torch.double, device=self.device).view(-1,1)
-            s_ = torch.tensor(self.buffer['s_'], dtype=torch.double, device=self.device)
-            old_a_logp = torch.tensor(self.buffer['a_logp'], dtype=torch.double, device=self.device)
+        # if self.device == "cuda":
+        #     s = torch.cuda.DoubleTensor(self.buffer['s'], device=self.device)
+        #     a = torch.cuda.DoubleTensor(self.buffer['a'], device=self.device)
+        #     r = torch.cuda.DoubleTensor(self.buffer['r'], device=self.device).view(-1, 1)
+        #     s_ = torch.cuda.DoubleTensor(self.buffer['s_'], device=self.device)
+        #     old_a_logp = torch.cuda.DoubleTensor(self.buffer['a_logp'], device=self.device).view(-1, 1)
+        # else:
+        s = torch.tensor(self.buffer['s'], dtype=torch.double, device=self.device)
+        a = torch.tensor(self.buffer['a'], dtype=torch.double, device=self.device)
+        r = torch.tensor(self.buffer['r'], dtype=torch.double, device=self.device).view(-1,1)
+        s_ = torch.tensor(self.buffer['s_'], dtype=torch.double, device=self.device)
+        old_a_logp = torch.tensor(self.buffer['a_logp'], dtype=torch.double, device=self.device)
 
         with torch.no_grad():
             target_v = r + self.gamma * self.net(s_)[1]
