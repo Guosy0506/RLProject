@@ -45,12 +45,12 @@ class CarRacingEnv(object):
     """
 
     # def __init__(self, is_render, img_stack, action_repeat):
-    def __init__(self, args, device):
-        if args.render:
+    def __init__(self, args, device, render=False):
+        if render:
             self.env = gym.make('CarRacing-v2', render_mode='human').unwrapped
         else:
             self.env = gym.make('CarRacing-v2').unwrapped
-        self.reward_threshold = self.env.spec.reward_threshold
+        self.reward_threshold = self.env.spec.reward_threshold  # 900
         self.img_stack = args.img_stack
         self.action_repeat = args.action_repeat
         self.obs = Observation(args.img_stack)
@@ -78,7 +78,7 @@ class CarRacingEnv(object):
         img_gray = self.rgb2gray(img_rgb)
         self.stack = [img_gray] * self.img_stack  # four frames for decision
         state = torch.from_numpy(np.array(self.stack)).float().to(self.device).unsqueeze(0)
-        obs = self.obs(state)
+        obs = self.obs(state).detach().numpy()
         return obs
 
     def step(self, action):
@@ -113,7 +113,7 @@ class CarRacingEnv(object):
         self.stack.append(img_gray)
         assert len(self.stack) == self.img_stack
         state = torch.from_numpy(np.array(self.stack)).float().to(self.device).unsqueeze(0)
-        obs = self.obs(state)
+        obs = self.obs(state).detach().numpy()
         return obs, total_reward, self.dead, self.finished, self.timeout
 
     @staticmethod

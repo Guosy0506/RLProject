@@ -10,11 +10,13 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Normal
 from env import CarRacingEnv
 import argparse
+import time
+from time import strftime, gmtime
 
-parser = argparse.ArgumentParser(description='Train a PPO agent for the CarRacing-v2')
+parser = argparse.ArgumentParser(description='Train a SAC agent for the CarRacing-v2')
 parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='repeat action in N frames (default: 8)')
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
-parser.add_argument('--render', action='store_true', help='render the environment')
+parser.add_argument('--seed', type=int, default=1024, metavar='N', help='random seed (default: 1024)')
 args = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
@@ -151,8 +153,26 @@ class SAC(object):
         a, _ = self.actor(s, deterministic, False)  # When choosing actions, we do not need to compute log_pi
         return a.data.numpy().flatten()
 
-    def learn(self, relay_buffer):
-        batch_s, batch_a, batch_r, batch_s_, batch_dw = relay_buffer.sample(self.batch_size)  # Sample a batch
+    def save_param(self, epi):
+        _dir = "param/{}_{}.pkl".format("SAC", epi)
+        _state = {'actor': self.actor.state_dict(),
+                  'actor_optim': self.actor_optimizer.state_dict(),
+                  'critic': self.critic.state_dict(),
+                  'critic_optim': self.critic_optimizer.state_dict()}
+        torch.save(_state, _dir)
+        print("save params in {}".format(_dir))
+
+    def load_param(self, path):
+        checkpoint = torch.load(path, map_location=device)
+        self.actor.load_state_dict(checkpoint['actor'])
+        self.critic.load_state_dict(checkpoint['critic'])
+        self.critic_target.load_state_dict(checkpoint['critic'])
+
+        self.actor_optimizer.load_state_dict(checkpoint['actor_optim'])
+        self.critic_optimizer.load_state_dict(checkpoint['critic_optim'])
+
+    def learn(self, replay_buffer):
+        batch_s, batch_a, batch_r, batch_s_, batch_dw = replay_buffer.sample(self.batch_size)  # Sample a batch
 
         with torch.no_grad():
             batch_a_, log_pi_ = self.actor(batch_s_)  # a' from the current policy
@@ -211,8 +231,11 @@ def evaluate_policy(env, agent):
         episode_reward = 0
         while not done:
             a = agent.choose_action(s, deterministic=True)  # We use the deterministic policy during the evaluating
-            s_, r, done, _ = env.step(a)
-            episode_reward += r
+            a = a * np.array([2., 1., 1.]) + np.array([-1., 0., 0.])
+            s_, reward, dead, finished, timeout = env.step(a)
+            episode_reward += reward
+            if dead or finished or timeout:
+                done = True
             s = s_
         evaluate_reward += episode_reward
 
@@ -220,12 +243,16 @@ def evaluate_policy(env, agent):
 
 
 if __name__ == '__main__':
-    env = CarRacingEnv(args,device)
-    env_evaluate = CarRacingEnv(args, device)
+    seed_torch(args.seed)
+    env = CarRacingEnv(args, device)
+    env_evaluate = CarRacingEnv(args, device, render=True)
     state_dim = env.state_dim
     action_dim = env.action_dim
     max_action = env.max_action
     max_episode_steps = env.max_episode_steps  # Maximum number of steps per episode
+    start_time = time.time()
+    print_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))
+    print("Begin at {}".format(print_time))
     print("state_dim={}".format(state_dim))
     print("action_dim={}".format(action_dim))
     print("max_action={}".format(max_action))
@@ -243,11 +270,17 @@ if __name__ == '__main__':
     evaluate_rewards = []  # Record the rewards during the evaluating
     total_steps = 0  # Record the total steps during the training
 
+    episode = 0  # Record the number of current episode
+    running_score = 0  # Record the running score
+    training_records = []  # Record something important during the training
+
     while total_steps < max_train_steps:
         seed = torch.randint(0, 100000, (1,)).item()
         state = env.reset(seed=seed)
-        episode_steps = 0
+        epi_steps = 0
         done = False
+        epi_score = 0
+        episode += 1
         while not done:
             if total_steps < random_steps:  # Take the random actions in the beginning for the better exploration
                 a = env.env.action_space.sample()
@@ -256,7 +289,7 @@ if __name__ == '__main__':
                 print("action is {}".format(a))
                 a = a * np.array([2., 1., 1.]) + np.array([-1., 0., 0.])
             state_, reward, dead, finished, timeout = env.step(a)
-            episode_steps = env.timestep
+            epi_steps = env.timestep
             # Set env = gym.make.unwrapped, and set max_episode_steps = 1000,now we have 3 conditions:
             # dead / finished(truncated) / timeout(reach the max_episode_steps).
             # When dead or win or reaching the max_episode_steps, done will be Ture, we need to distinguish them;
@@ -266,13 +299,13 @@ if __name__ == '__main__':
             if dead or finished or timeout:
                 done = True
             ##  in the first 20 flames, gym is loading the Scenes and the state_ is NOT suitable as an input to the network
-            if episode_steps > 20.0:
+            if epi_steps > 20.0:
                 replay_buffer.store(state, a, reward, state_, dw)  # Store the transition
                 total_steps += 1
-
+                epi_score += reward
                 if total_steps >= random_steps:
+                    print("Agent is learning")
                     agent.learn(replay_buffer)
-
             state = state_
 
             # Evaluate the policy every 'evaluate_freq' steps
@@ -280,10 +313,23 @@ if __name__ == '__main__':
                 evaluate_num += 1
                 evaluate_reward = evaluate_policy(env_evaluate, agent)
                 evaluate_rewards.append(evaluate_reward)
-                print("evaluate_num:{} \t evaluate_reward:{}".format(evaluate_num, evaluate_reward))
+
+                end_time = time.time()
+                runtime = end_time - start_time
+                runtime = strftime("%H:%M:%S", gmtime(runtime))
+
+                print("evaluate_num:{}\tevaluate_reward:{:.2f}\tRunTime:{}".format(evaluate_num, evaluate_reward, runtime))
                 writer.add_scalar('step_rewards_CarRacingV2', evaluate_reward, global_step=total_steps)
+                agent.save_param(episode)  # print("save net params in param/SAC_{}
                 # Save the rewards
                 if evaluate_num % 10 == 0:
-                    np.save('./data_train/SAC_seed_{}.npy'.format(seed), np.array(evaluate_rewards))
+                    np.save('./data_train/SAC_evaluate_rewards.npy', np.array(evaluate_rewards))
+                    np.save('./data_train/SAC_training_records.npy', training_records)
+                    print('save records')
 
-
+        running_score = running_score * 0.99 + epi_score * 0.01
+        training_records.append([episode, epi_score, running_score, seed])
+        if running_score > env.reward_threshold:
+            print("Solved! Running reward is now {} and the last episode runs to {}!".format(running_score, score))
+            break
+    env.env.close()

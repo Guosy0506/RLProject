@@ -95,8 +95,7 @@ if __name__ == "__main__":
                     end_time = time.time()
                     runtime = end_time - start_time
                     runtime = strftime("%H:%M:%S", gmtime(runtime))
-                print('Ep {}\tLast score: {:.2f}\tMoving average score: {:.2f}\tTime:{}'.format(i_ep, score,
-                                                                                                running_score, runtime))
+                print('Ep {}\tLast score: {:.2f}\tMoving average score: {:.2f}\tTime:{}'.format(i_ep, score, running_score, runtime))
             if running_score > env.reward_threshold:
                 print("Solved! Running reward is now {} and the last episode runs to {}!".format(running_score, score))
                 break
