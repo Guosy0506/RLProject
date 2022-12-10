@@ -74,7 +74,7 @@ class CarRacingEnv(object):
         # only calculate ave_reward for last {length} steps, if smaller
         # than -0.1,the episode is died
         count = 0
-        length = 70
+        length = 100
         history = np.zeros(length)
 
         def memory(reward):
