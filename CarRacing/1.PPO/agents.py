@@ -79,14 +79,14 @@ class PPO_Agent(object):
         self.counter = 0
         self.istrain = args.train
         self.lr = args.lr  # Learning rate
-        self.use_lr_decay = args.use_lr_decay
+        self.lr_decay = args.lr_decay
         self.max_train_steps = args.max_train_steps
         if self.istrain:
             print("Agent mode is TRAIN.")
         else:
             self.load_param(path='../ModifyPPOinv2/param/ppo_3870.pkl')
             print("Agent mode is VALIDATION.")
-        self.optimizer = optim.Adam(self.net.parameters(), lr=args.lr)
+        self.optimizer = optim.Adam(self.net.parameters(), lr=self.lr)
 
     def select_action(self, state):
         state = torch.from_numpy(state).double().to(self.device).unsqueeze(0)
@@ -123,18 +123,18 @@ class PPO_Agent(object):
             return False
 
     def update(self, running_score, reward_threshold):
-        # if self.device == "cuda":
-        #     s = torch.cuda.DoubleTensor(self.buffer['s'], device=self.device)
-        #     a = torch.cuda.DoubleTensor(self.buffer['a'], device=self.device)
-        #     r = torch.cuda.DoubleTensor(self.buffer['r'], device=self.device).view(-1, 1)
-        #     s_ = torch.cuda.DoubleTensor(self.buffer['s_'], device=self.device)
-        #     old_a_logp = torch.cuda.DoubleTensor(self.buffer['a_logp'], device=self.device).view(-1, 1)
-        # else:
-        s = torch.tensor(self.buffer['s'], dtype=torch.double, device=self.device)
-        a = torch.tensor(self.buffer['a'], dtype=torch.double, device=self.device)
-        r = torch.tensor(self.buffer['r'], dtype=torch.double, device=self.device).view(-1,1)
-        s_ = torch.tensor(self.buffer['s_'], dtype=torch.double, device=self.device)
-        old_a_logp = torch.tensor(self.buffer['a_logp'], dtype=torch.double, device=self.device)
+        if self.device == "cuda":
+            s = torch.cuda.DoubleTensor(self.buffer['s'], device=self.device)
+            a = torch.cuda.DoubleTensor(self.buffer['a'], device=self.device)
+            r = torch.cuda.DoubleTensor(self.buffer['r'], device=self.device).view(-1, 1)
+            s_ = torch.cuda.DoubleTensor(self.buffer['s_'], device=self.device)
+            old_a_logp = torch.cuda.DoubleTensor(self.buffer['a_logp'], device=self.device).view(-1, 1)
+        else:
+            s = torch.tensor(self.buffer['s'], dtype=torch.double, device=self.device)
+            a = torch.tensor(self.buffer['a'], dtype=torch.double, device=self.device)
+            r = torch.tensor(self.buffer['r'], dtype=torch.double, device=self.device).view(-1,1)
+            s_ = torch.tensor(self.buffer['s_'], dtype=torch.double, device=self.device)
+            old_a_logp = torch.tensor(self.buffer['a_logp'], dtype=torch.double, device=self.device)
 
         with torch.no_grad():
             target_v = r + self.gamma * self.net(s_)[1]
@@ -159,11 +159,12 @@ class PPO_Agent(object):
                 # nn.utils.clip_grad_norm_(self.net.parameters(), self.max_grad_norm)
                 self.optimizer.step()
 
-        if self.use_lr_decay:  # Trick 6:learning rate Decay
-            self.lr_decay(running_score, reward_threshold)
+        if self.lr_decay:  # Trick 6:learning rate Decay
+            self.set_lr_decay(running_score, reward_threshold)
 
-    def lr_decay(self, cumulative_reward, reward_threshold):
+    def set_lr_decay(self, cumulative_reward, reward_threshold):
         lr_now = self.lr * (1 - cumulative_reward / reward_threshold)
         for p in self.optimizer.param_groups:
             p['lr'] = lr_now
+        print(lr_now)
 

@@ -18,8 +18,8 @@ parser.add_argument("--max_train_steps", type=int, default=int(1e7), help=" Maxi
 parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='repeat action in N frames (default: 8)')
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
 parser.add_argument('--seed', type=int, default=0, metavar='N', help='random seed (default: 0)')
-parser.add_argument("--use_lr_decay", action='store_false', help="automatic decay learning rate (default: True)")
-parser.add_argument('--use_changing_map', action='store_false', help='change the map (default: True)')
+parser.add_argument("--lr_decay", action='store_false', help="automatic decay learning rate (default: True)")
+parser.add_argument('--changing_map', action='store_false', help='change the map (default: True)')
 parser.add_argument('--time', action='store_false', help='display time (default: True)')
 parser.add_argument('--render', action='store_true', help='render the environment')
 parser.add_argument('--vis', action='store_true', help='use visdom')
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     env = CarRacingEnv(args)
     seed_torch(args.seed)
     if args.transfer_learning:
-        agent.load_param('ppo_3870.pkl')
+        agent.load_param('ppo_2011.pkl')
     if args.vis:
         draw_reward = DrawLine(env="car", title="PPO", xlabel="Episode", ylabel="Moving averaged episode reward")
         print("Vis is true")
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     seed = torch.randint(0, 100000, (1,)).item()
     for i_ep in range(Episode):
         score = 0
-        if args.use_changing_map:
+        if args.changing_map:
             seed = torch.randint(0, 100000, (1,)).item()
         state = env.reset(seed=seed)
         if args.train:  # training mode
