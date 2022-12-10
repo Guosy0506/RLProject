@@ -330,6 +330,6 @@ if __name__ == '__main__':
         running_score = running_score * 0.99 + epi_score * 0.01
         training_records.append([episode, epi_score, running_score, seed])
         if running_score > env.reward_threshold:
-            print("Solved! Running reward is now {} and the last episode runs to {}!".format(running_score, score))
+            print("Solved! Running reward is now {}".format(running_score))
             break
     env.env.close()
