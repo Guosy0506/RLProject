@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 
 class Observation(nn.Module):
-    def __init__(self, img_stack):
+    def __init__(self, img_stack, device):
         super(Observation, self).__init__()
         self.cnn_base = nn.Sequential(  # input shape (4, 84, 84)
             nn.Conv2d(img_stack, 8, kernel_size=4, stride=2),
@@ -31,7 +31,7 @@ class Observation(nn.Module):
         self.fc = nn.Sequential(nn.Linear(256, 100), nn.ReLU())
         self.alpha_head = nn.Sequential(nn.Linear(100, 3), nn.Softplus())
         self.beta_head = nn.Sequential(nn.Linear(100, 3), nn.Softplus())
-        self.load_state_dict(torch.load("ppo_3870.pkl", map_location=torch.device("cpu")))
+        self.load_state_dict(torch.load("ppo_3870.pkl", map_location=device))
 
     def forward(self, x):
         x = self.cnn_base(x)
@@ -53,8 +53,8 @@ class CarRacingEnv(object):
         self.reward_threshold = self.env.spec.reward_threshold  # 900
         self.img_stack = args.img_stack
         self.action_repeat = args.action_repeat
-        self.obs = Observation(args.img_stack)
         self.device = device
+        self.obs = Observation(self.img_stack, self.device)
 
         self.state_dim = self.obs.output_dim
         self.action_dim = self.env.action_space.shape[0]
