@@ -80,7 +80,6 @@ class PPO_Agent(object):
         self.istrain = args.train
         self.lr = args.lr  # Learning rate
         self.lr_decay = args.lr_decay
-        self.max_train_steps = args.max_train_steps
         if self.istrain:
             print("Agent mode is TRAIN.")
         else:
