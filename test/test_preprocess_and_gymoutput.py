@@ -41,7 +41,7 @@ main()
 #     # size 1
 #     return s
 #
-# def test():
+# def test.py():
 #     for i in range(4):
 #         img = plt.imread("{}.png".format(i+1))
 #         ax = plt.subplots(1,2)

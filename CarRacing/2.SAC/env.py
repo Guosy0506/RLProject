@@ -58,7 +58,7 @@ class CarRacingEnv(object):
 
         self.state_dim = self.obs.output_dim
         self.action_dim = self.env.action_space.shape[0]
-        self.max_action = float(self.env.action_space.high[0])
+        self.max_action = self.env.action_space.high
         self.max_episode_steps = 1000
         self.timestep = None
 
@@ -77,7 +77,7 @@ class CarRacingEnv(object):
         img_rgb, _ = self.env.reset(seed=seed)
         img_gray = self.rgb2gray(img_rgb)
         self.stack = [img_gray] * self.img_stack  # four frames for decision
-        state = torch.from_numpy(np.array(self.stack)).float().to(self.device).unsqueeze(0)
+        state = torch.from_numpy(np.array(self.stack)).float().unsqueeze(0)
         obs = self.obs(state).detach().numpy()
         return obs
 
@@ -92,7 +92,7 @@ class CarRacingEnv(object):
             on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
             if on_grass > 160:
                 reward -= 0.06
-                ##  to test the values of on_grass, un-comment the codes below:
+                ##  to test.py the values of on_grass, un-comment the codes below:
                 # plt.imshow(img_rgb[64:78, 42:54, 1])
                 # plt.title("{}".format(on_grass))
                 # plt.pause(0.2)
@@ -112,7 +112,7 @@ class CarRacingEnv(object):
         self.stack.pop(0)
         self.stack.append(img_gray)
         assert len(self.stack) == self.img_stack
-        state = torch.from_numpy(np.array(self.stack)).float().to(self.device).unsqueeze(0)
+        state = torch.from_numpy(np.array(self.stack)).float().unsqueeze(0)
         obs = self.obs(state).detach().numpy()
         return obs, total_reward, self.dead, self.finished, self.timeout
 

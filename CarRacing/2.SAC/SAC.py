@@ -60,7 +60,8 @@ class Actor(nn.Module):
         else:
             log_pi = None
 
-        a = self.max_action * torch.tanh(a)
+        a = torch.from_numpy(self.max_action) * torch.tanh(a)
+        a = a * torch.tensor([1., 0.5, 0.5]) + torch.tensor([0., 0.5, 0.5])
         # Use tanh to compress the unbounded Gaussian distribution into a bounded action interval.
 
         return a, log_pi
@@ -231,21 +232,19 @@ def evaluate_policy(env, agent):
         episode_reward = 0
         while not done:
             a = agent.choose_action(s, deterministic=True)  # We use the deterministic policy during the evaluating
-            a = a * np.array([2., 1., 1.]) + np.array([-1., 0., 0.])
             s_, reward, dead, finished, timeout = env.step(a)
             episode_reward += reward
             if dead or finished or timeout:
                 done = True
             s = s_
         evaluate_reward += episode_reward
-
+    env.env.close()
     return int(evaluate_reward / times)
 
 
 if __name__ == '__main__':
     seed_torch(args.seed)
     env = CarRacingEnv(args, device)
-    env_evaluate = CarRacingEnv(args, device, render=True)
     state_dim = env.state_dim
     action_dim = env.action_dim
     max_action = env.max_action
@@ -286,8 +285,7 @@ if __name__ == '__main__':
                 a = env.env.action_space.sample()
             else:
                 a = agent.choose_action(state)
-                print("action is {}".format(a))
-                a = a * np.array([2., 1., 1.]) + np.array([-1., 0., 0.])
+                # print('action is {}'.format(a))
             state_, reward, dead, finished, timeout = env.step(a)
             epi_steps = env.timestep
             # Set env = gym.make.unwrapped, and set max_episode_steps = 1000,now we have 3 conditions:
@@ -304,13 +302,13 @@ if __name__ == '__main__':
                 total_steps += 1
                 epi_score += reward
                 if total_steps >= random_steps:
-                    print("Agent is learning")
                     agent.learn(replay_buffer)
             state = state_
 
             # Evaluate the policy every 'evaluate_freq' steps
             if (total_steps + 1) % evaluate_freq == 0:
                 evaluate_num += 1
+                env_evaluate = CarRacingEnv(args, device, render=True)
                 evaluate_reward = evaluate_policy(env_evaluate, agent)
                 evaluate_rewards.append(evaluate_reward)
 

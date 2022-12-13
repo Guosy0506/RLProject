@@ -44,7 +44,7 @@ class CarRacingEnv(object):
             on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
             if on_grass > 160:
                 reward -= 0.06
-                ##  to test the values of on_grass, un-comment the codes below:
+                ##  to test.py the values of on_grass, un-comment the codes below:
                 # plt.imshow(img_rgb[64:78, 42:54, 1])
                 # plt.title("{}".format(on_grass))
                 # plt.pause(0.2)
