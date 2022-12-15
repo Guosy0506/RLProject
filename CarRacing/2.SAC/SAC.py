@@ -314,7 +314,7 @@ if __name__ == '__main__':
 
                 end_time = time.time()
                 runtime = end_time - start_time
-                runtime = strftime("%H:%M:%S", gmtime(runtime))
+                runtime = strftime("%d-%H:%M:%S", gmtime(runtime))
 
                 print("evaluate_num:{}\tevaluate_reward:{:.2f}\tRunTime:{}".format(evaluate_num, evaluate_reward, runtime))
                 writer.add_scalar('step_rewards_CarRacingV2', evaluate_reward, global_step=total_steps)
