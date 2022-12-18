@@ -31,7 +31,7 @@ class Observation(nn.Module):
         self.fc = nn.Sequential(nn.Linear(256, 100), nn.ReLU())
         self.alpha_head = nn.Sequential(nn.Linear(100, 3), nn.Softplus())
         self.beta_head = nn.Sequential(nn.Linear(100, 3), nn.Softplus())
-        self.load_state_dict(torch.load("ppo_3870.pkl", map_location=device))
+        self.load_state_dict(torch.load("ppo_6727.pkl", map_location=device))
 
     def forward(self, x):
         x = self.cnn_base(x)
