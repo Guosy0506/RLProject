@@ -245,6 +245,7 @@ def evaluate_policy(env, agent):
 if __name__ == '__main__':
     seed_torch(args.seed)
     env = CarRacingEnv(args, device)
+    env.env.action_space.seed(args.seed)
     state_dim = env.state_dim
     action_dim = env.action_dim
     max_action = env.max_action
