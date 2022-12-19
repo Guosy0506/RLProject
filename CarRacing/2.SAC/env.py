@@ -96,7 +96,7 @@ class CarRacingEnv(object):
                 # plt.imshow(img_rgb[64:78, 42:54, 1])
                 # plt.title("{}".format(on_grass))
                 # plt.pause(0.2)
-            speed_reward = (action[1] - action[2]) * 0.05
+            speed_reward = (action[1] - action[2]) * 0.1
             reward += max(speed_reward, 0)
             self.timestep += 1
             total_reward += reward
