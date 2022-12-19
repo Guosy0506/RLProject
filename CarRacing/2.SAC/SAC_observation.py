@@ -319,9 +319,9 @@ if __name__ == '__main__':
 
                 print("evaluate_num:{}\tevaluate_reward:{:.2f}\tRunTime:{}".format(evaluate_num, evaluate_reward, runtime))
                 writer.add_scalar('step_rewards_CarRacingV2', evaluate_reward, global_step=total_steps)
-                agent.save_param(episode)  # print("save net params in param/SAC_{}
                 # Save the rewards
                 if evaluate_num % 10 == 0:
+                    agent.save_param(episode)  # print("save net params in param/SAC_{}
                     np.save('./data_train/SAC_evaluate_rewards.npy', np.array(evaluate_rewards))
                     np.save('./data_train/SAC_training_records.npy', training_records)
                     print('save records')
