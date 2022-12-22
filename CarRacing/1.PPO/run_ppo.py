@@ -13,7 +13,7 @@ from util import DrawLine
 
 parser = argparse.ArgumentParser(description='Train a PPO agent for the CarRacing-v2')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G', help='discount factor (default: 0.99)')
-parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate of actor")
+parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate of actor")
 parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='repeat action in N frames (default: 8)')
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
 parser.add_argument('--seed', type=int, default=0, metavar='N', help='random seed (default: 0)')
