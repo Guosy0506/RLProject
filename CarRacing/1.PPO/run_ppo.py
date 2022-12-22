@@ -48,6 +48,7 @@ if __name__ == "__main__":
     # different mode is different in the function: select_action
     agent = PPO_Agent(args, device=device)
     env = CarRacingEnv(args)
+    env.env.action_space.seed(args.seed)
     seed_torch(args.seed)
     if args.transfer_learning:
         agent.load_param('ppo_2011.pkl')
@@ -73,15 +74,20 @@ if __name__ == "__main__":
         state = env.reset(seed=seed)
         if args.train:  # training mode
             for t in range(1000):
-                action, a_logp = agent.select_action(state)
+                if i_ep < 50:  # Take the random actions in the beginning for the better exploration
+                    action = env.env.action_space.sample()
+                    action = (action + np.array([1., 0., 0.])) * np.array([0.5, 1., 1.])
+                    a_logp = 0
+                else:
+                    action, a_logp = agent.select_action(state)
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
                 ##  in the first 20 flames, gym is loading the Scenes and the state_ is NOT suitable as an input to the network
-                if t > 20.0 / args.action_repeat:
-                    if agent.store_memory((state, action, a_logp, reward, state_)):
-                        print("param updating")
-                        agent.update(running_score, env.reward_threshold)
-                        agent.save_param(i_ep)  # print("update and save net params in param/ppo_{i_ep}")
-                    score += reward
+                # if t > 20.0 / args.action_repeat:
+                if agent.store_memory((state, action, a_logp, reward, state_)):
+                    print("param updating")
+                    agent.update(running_score, env.reward_threshold)
+                    agent.save_param(i_ep)  # print("update and save net params in param/ppo_{i_ep}")
+                score += reward
                 state = state_
                 if die or truncated:
                     break
