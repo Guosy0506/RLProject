@@ -14,14 +14,14 @@ class Net(nn.Module):
 
     def __init__(self, args):
         super(Net, self).__init__()
-        self.cnn_base = nn.Sequential(  # input shape (4, 84, 84)
+        self.cnn_base = nn.Sequential(  # input shape (4, 96, 96)
             nn.Conv2d(args.img_stack, 8, kernel_size=4, stride=2),
             nn.ReLU(),  # activation
-            nn.Conv2d(8, 16, kernel_size=3, stride=2),  # (8, 41, 41)
+            nn.Conv2d(8, 16, kernel_size=3, stride=2),  # (8, 47, 47)
             nn.ReLU(),  # activation
-            nn.Conv2d(16, 32, kernel_size=3, stride=2),  # (16, 20, 20)
+            nn.Conv2d(16, 32, kernel_size=3, stride=2),  # (16, 23, 23)
             nn.ReLU(),  # activation
-            nn.Conv2d(32, 64, kernel_size=3, stride=2),  # (32, 10, 10)
+            nn.Conv2d(32, 64, kernel_size=3, stride=2),  # (32, 11, 11)
             nn.ReLU(),  # activation
             nn.Conv2d(64, 128, kernel_size=3, stride=1),  # (64, 5, 5)
             nn.ReLU(),  # activation
@@ -86,6 +86,7 @@ class PPO_Agent(object):
             self.load_param(path='../ModifyPPOinv2/param/ppo_3870.pkl')
             print("Agent mode is VALIDATION.")
         self.optimizer = optim.Adam(self.net.parameters(), lr=self.lr)
+        print('learning rate is {}'.format(self.lr))
 
     def select_action(self, state):
         state = torch.from_numpy(state).double().to(self.device).unsqueeze(0)

@@ -13,7 +13,7 @@ from util import DrawLine
 
 parser = argparse.ArgumentParser(description='Train a PPO agent for the CarRacing-v2')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G', help='discount factor (default: 0.99)')
-parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate of actor")
+parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate of actor")
 parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='repeat action in N frames (default: 8)')
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
 parser.add_argument('--seed', type=int, default=0, metavar='N', help='random seed (default: 0)')
@@ -74,12 +74,7 @@ if __name__ == "__main__":
         state = env.reset(seed=seed)
         if args.train:  # training mode
             for t in range(1000):
-                if i_ep < 50:  # Take the random actions in the beginning for the better exploration
-                    action = env.env.action_space.sample()
-                    action = (action + np.array([1., 0., 0.])) * np.array([0.5, 1., 1.])
-                    a_logp = 0
-                else:
-                    action, a_logp = agent.select_action(state)
+                action, a_logp = agent.select_action(state)
                 state_, reward, die, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
                 ##  in the first 20 flames, gym is loading the Scenes and the state_ is NOT suitable as an input to the network
                 # if t > 20.0 / args.action_repeat:
