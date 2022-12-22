@@ -19,9 +19,9 @@ class Net(nn.Module):
             nn.ReLU(),  # activation
             nn.Conv2d(8, 16, kernel_size=3, stride=2),  # (8, 41, 41)
             nn.ReLU(),  # activation
-            nn.Conv2d(16, 32, kernel_size=2, stride=2),  # (16, 20, 20)
+            nn.Conv2d(16, 32, kernel_size=3, stride=2),  # (16, 20, 20)
             nn.ReLU(),  # activation
-            nn.Conv2d(32, 64, kernel_size=2, stride=2),  # (32, 10, 10)
+            nn.Conv2d(32, 64, kernel_size=3, stride=2),  # (32, 10, 10)
             nn.ReLU(),  # activation
             nn.Conv2d(64, 128, kernel_size=3, stride=1),  # (64, 5, 5)
             nn.ReLU(),  # activation
@@ -71,8 +71,8 @@ class PPO_Agent(object):
         self.img_stack = args.img_stack
         self.gamma = args.gamma
         self.device = device
-        self.transition = np.dtype([('s', np.float64, (args.img_stack, 84, 84)), ('a', np.float64, (3,)), ('a_logp', np.float64),
-                                    ('r', np.float64), ('s_', np.float64, (args.img_stack, 84, 84))])
+        self.transition = np.dtype([('s', np.float64, (args.img_stack, 96, 96)), ('a', np.float64, (3,)), ('a_logp', np.float64),
+                                    ('r', np.float64), ('s_', np.float64, (args.img_stack, 96, 96))])
         self.training_step = 0
         self.net = Net(args).double().to(self.device)
         self.buffer = np.empty(self.buffer_capacity, dtype=self.transition)

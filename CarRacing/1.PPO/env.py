@@ -41,15 +41,17 @@ class CarRacingEnv(object):
             if terminated:
                 reward += 100
             # grass penalty
-            on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
-            if on_grass > 160:
-                reward -= 0.06
+            # on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
+            # if on_grass > 160:
+            #     reward -= 0.06
+            if np.mean(img_rgb[:, :, 1]) > 185.0:
+                reward -= 0.05
                 ##  to test.py the values of on_grass, un-comment the codes below:
                 # plt.imshow(img_rgb[64:78, 42:54, 1])
                 # plt.title("{}".format(on_grass))
                 # plt.pause(0.2)
-            speed_reward = (action[1] - action[2]) * 0.05
-            reward += max(speed_reward, 0)
+            # speed_reward = (action[1] - action[2]) * 0.05
+            # reward += max(speed_reward, 0)
             total_reward += reward
             # if no reward recently, end the episode
             if self.av_r(reward) <= -0.1 or terminated:
@@ -69,7 +71,8 @@ class CarRacingEnv(object):
         if norm:
             # normalize
             gray = gray / 128. - 1.
-        return gray[0:84, 6:90]  # in python,0:84 means index from 0 to 83
+        return gray
+        # return gray[0:84, 6:90]  # in python,0:84 means index from 0 to 83
 
     @staticmethod
     def reward_memory():
