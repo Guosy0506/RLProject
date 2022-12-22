@@ -8,7 +8,7 @@ import random
 import copy
 from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Normal
-from env import CarRacingEnv
+from env_observation import CarRacingEnv
 import argparse
 import time
 from time import strftime, gmtime

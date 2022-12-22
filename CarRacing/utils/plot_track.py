@@ -7,11 +7,16 @@ torch.manual_seed(0)
 fig = plt.figure()
 seeds = [79474, 67463, 50944, 1210, 3606, 95069, 33682, 33866, 79953, 48529, 32886, 64887, 76047, 32673, 8960, 20659, 72706, 59810, 77344, 5106, 1377, 53333, 46133, 50285, 86239]
 times = 1
-for seed in seeds:
+# for seed in seeds:
+for i in range(25):
     # seed = torch.randint(0, 100000, (1,)).item()
+    seed =1000
     print(seed)
     env = CarRacing(render_mode="human")
-    env.reset(seed=seed)
+    if i == 0:
+        env.reset(seed=seed)
+    else:
+        env.reset()
     x = []
     y = []
     for i in range(len(env.track)):
