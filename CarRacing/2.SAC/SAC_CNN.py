@@ -295,7 +295,7 @@ if __name__ == '__main__':
     state_dim = 4*96*96
     action_dim = env.action_dim
     max_action = env.max_action
-    max_size = int(3e4)
+    max_size = int(1e4)
     max_episode_steps = env.max_episode_steps  # Maximum number of steps per episode
     start_time = time.time()
     print_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))

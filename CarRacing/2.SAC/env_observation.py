@@ -103,12 +103,15 @@ class CarRacingEnv(object):
             # if no reward recently, end the episode
             if truncated:
                 self.finished = True
+                total_reward += 100
                 break
             if self.timestep == self.max_episode_steps:
                 self.timeout = True
+                total_reward += 50
                 break
             if self.av_r(reward) <= -0.1 or terminated:
                 self.dead = True
+                total_reward -= 100
                 break
         img_gray = self.rgb2gray(img_rgb)
         self.stack.pop(0)
