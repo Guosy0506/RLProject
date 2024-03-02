@@ -336,7 +336,7 @@ if __name__ == '__main__':
     agent = SAC(action_dim, max_action)
     replay_buffer = ReplayBuffer(max_size, state_dim, action_dim)
     # Build a tensorboard
-    writer = SummaryWriter(log_dir='runs/SAC_CNN')
+    writer = SummaryWriter(log_dir='runs/SAC_baseline')
 
     max_train_steps = 3e6  # Maximum number of training steps
     random_steps = 25e3  # Take the random actions in the beginning for the better exploration
