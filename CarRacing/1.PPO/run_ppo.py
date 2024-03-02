@@ -18,7 +18,7 @@ parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='r
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
 parser.add_argument('--seed', type=int, default=0, metavar='N', help='random seed (default: 0)')
 
-parser.add_argument("--lr_decay", action='store_false', help="automatic decay learning rate (default: True)")
+parser.add_argument("--lr_decay", action='store_true', help="automatic decay learning rate (default: True)")
 parser.add_argument('--changing_map', action='store_false', help='change the map (default: True)')
 parser.add_argument('--time', action='store_false', help='display time (default: True)')
 parser.add_argument('--render', action='store_true', help='render the environment')
