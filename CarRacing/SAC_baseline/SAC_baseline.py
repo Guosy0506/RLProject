@@ -8,13 +8,13 @@ import random
 import copy
 from torch.utils.tensorboard import SummaryWriter
 from torch.distributions import Normal
-from env_observation import CarRacingEnv
+from env import CarRacingEnv
 import argparse
 import time
 from time import strftime, gmtime
 
 parser = argparse.ArgumentParser(description='Train a SAC agent for the CarRacing-v2')
-parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='repeat action in N frames (default: 8)')
+parser.add_argument('--action-repeat', type=int, default=4, metavar='N', help='repeat action in N frames (default: 4)')
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
 parser.add_argument('--seed', type=int, default=1024, metavar='N', help='random seed (default: 1024)')
 args = parser.parse_args()
@@ -22,6 +22,7 @@ args = parser.parse_args()
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
+CNN_OUTPUT = 64
 
 def seed_torch(seed=1024):
     torch.manual_seed(seed)  # 为CPU中设置种子
@@ -31,18 +32,78 @@ def seed_torch(seed=1024):
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
+class Cnn(nn.Module):
+    def __init__(self):
+        super(Cnn, self).__init__()
+        # self.cnn = nn.Sequential(  # input shape (4, 96, 96)
+        #     nn.Conv2d(4, 8, kernel_size=4, stride=2),
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(8, 16, kernel_size=3, stride=2),  # (8, 47, 47)
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(16, 32, kernel_size=3, stride=2),  # (16, 23, 23)
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(32, 64, kernel_size=3, stride=2),  # (32, 11, 11)
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(64, 128, kernel_size=3, stride=1),  # (64, 5, 5)
+        #     nn.ReLU(),  # activation
+        #     nn.Conv2d(128, 256, kernel_size=3, stride=1),  # (128, 3, 3)
+        #     nn.ReLU(),  # activation
+        # )  # output shape (256, 1, 1)
+        self.cnn = nn.Sequential(  #input shape (4,96,96)
+            nn.Conv2d(4, 8, kernel_size=8, stride=4),
+            nn.ReLU(),  # activation
+            nn.Conv2d(8, 16, kernel_size=5, stride=3),   # (8,23,23)
+            nn.ReLU(),  # activation
+            nn.Conv2d(16, 32, kernel_size=3, stride=2),  # (16, 7, 7)
+            nn.ReLU(),  # activation
+            nn.Conv2d(32, 64, kernel_size=3, stride=1),  # (32, 3, 3)
+            nn.ReLU(),  # activation
+        )  # output shape (64, 1, 1)
+        self.apply(self._weights_init)
+
+    @staticmethod
+    def _weights_init(m):
+        if isinstance(m, nn.Conv2d):
+            nn.init.xavier_uniform_(m.weight, gain=nn.init.calculate_gain('relu'))
+            nn.init.constant_(m.bias, 0.1)
+
+    def forward(self, x, deterministic=False, with_logprob=True):
+        x = self.cnn(x)
+        x = x.view(-1, CNN_OUTPUT)
+        return x
+
+
 class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_width, max_action):
+    def __init__(self, action_dim, hidden_width, max_action):
         super(Actor, self).__init__()
+        self.cnn = nn.Sequential(  #input shape (4,96,96)
+            nn.Conv2d(4, 8, kernel_size=8, stride=4),
+            nn.ReLU(),  # activation
+            nn.Conv2d(8, 16, kernel_size=5, stride=3),   # (8,23,23)
+            nn.ReLU(),  # activation
+            nn.Conv2d(16, 32, kernel_size=3, stride=2),  # (16, 7, 7)
+            nn.ReLU(),  # activation
+            nn.Conv2d(32, 64, kernel_size=3, stride=1),  # (32, 3, 3)
+            nn.ReLU(),  # activation
+        )  # output shape (64, 1, 1)
+        self.cnn_output = CNN_OUTPUT  # 最后用超参数替代
         self.max_action = max_action
-        self.l1 = nn.Linear(state_dim, hidden_width)
-        self.l2 = nn.Linear(hidden_width, hidden_width)
+        self.l1 = nn.Linear(self.cnn_output, hidden_width)
         self.mean_layer = nn.Linear(hidden_width, action_dim)
         self.log_std_layer = nn.Linear(hidden_width, action_dim)
 
+        self.apply(self._weights_init)
+
+    @staticmethod
+    def _weights_init(m):
+        if isinstance(m, nn.Conv2d):
+            nn.init.xavier_uniform_(m.weight, gain=nn.init.calculate_gain('relu'))
+            nn.init.constant_(m.bias, 0.1)
+
     def forward(self, x, deterministic=False, with_logprob=True):
-        x = F.relu(self.l1(x))
-        x = F.relu(self.l2(x))
+        x = self.cnn(x)
+        x_cnn = x.view(-1, self.cnn_output)
+        x = F.relu(self.l1(x_cnn))
         mean = self.mean_layer(x)
         log_std = self.log_std_layer(x)  # We output the log_std to ensure that std=exp(log_std)>0
         log_std = torch.clamp(log_std, -20, 2)
@@ -64,22 +125,32 @@ class Actor(nn.Module):
         a = a * torch.tensor([1., 0.5, 0.5]) + torch.tensor([0., 0.5, 0.5])
         # Use tanh to compress the unbounded Gaussian distribution into a bounded action interval.
 
-        return a, log_pi
+        return a, log_pi, x_cnn
 
 
 class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
-    def __init__(self, state_dim, action_dim, hidden_width):
+    def __init__(self, action_dim, hidden_width):
         super(Critic, self).__init__()
+        self.cnn_output = CNN_OUTPUT
         # Q1
-        self.l1 = nn.Linear(state_dim + action_dim, hidden_width)
+        self.l1 = nn.Linear(self.cnn_output + action_dim, hidden_width)
         self.l2 = nn.Linear(hidden_width, hidden_width)
         self.l3 = nn.Linear(hidden_width, 1)
         # Q2
-        self.l4 = nn.Linear(state_dim + action_dim, hidden_width)
+        self.l4 = nn.Linear(self.cnn_output + action_dim, hidden_width)
         self.l5 = nn.Linear(hidden_width, hidden_width)
         self.l6 = nn.Linear(hidden_width, 1)
 
+        self.apply(self._weights_init)
+
+    @staticmethod
+    def _weights_init(m):
+        if isinstance(m, nn.Conv2d):
+            nn.init.xavier_uniform_(m.weight, gain=nn.init.calculate_gain('relu'))
+            nn.init.constant_(m.bias, 0.1)
+
     def forward(self, s, a):
+        s = s.view(-1, self.cnn_output)
         s_a = torch.cat([s, a], 1)
         q1 = F.relu(self.l1(s_a))
         q1 = F.relu(self.l2(q1))
@@ -93,14 +164,14 @@ class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
 
 
 class ReplayBuffer(object):
-    def __init__(self, state_dim, action_dim):
-        self.max_size = int(1e6)
+    def __init__(self, max_size, state_dim, action_dim):
+        self.max_size = max_size
         self.count = 0
         self.size = 0
-        self.s = np.zeros((self.max_size, state_dim))
+        self.s = np.zeros((self.max_size, 4, 96, 96))
         self.a = np.zeros((self.max_size, action_dim))
         self.r = np.zeros((self.max_size, 1))
-        self.s_ = np.zeros((self.max_size, state_dim))
+        self.s_ = np.zeros((self.max_size, 4, 96, 96))
         self.dw = np.zeros((self.max_size, 1))
 
     def store(self, s, a, r, s_, dw):
@@ -124,9 +195,9 @@ class ReplayBuffer(object):
 
 
 class SAC(object):
-    def __init__(self, state_dim, action_dim, max_action):
+    def __init__(self, action_dim, max_action):
         self.max_action = max_action
-        self.hidden_width = 256  # The number of neurons in hidden layers of the neural network
+        self.hidden_width = 100  # The number of neurons in hidden layers of the neural network
         self.batch_size = 256  # batch size
         self.GAMMA = 0.99  # discount factor
         self.TAU = 0.005  # Softly update the target network
@@ -142,8 +213,8 @@ class SAC(object):
         else:
             self.alpha = 0.2
 
-        self.actor = Actor(state_dim, action_dim, self.hidden_width, max_action)
-        self.critic = Critic(state_dim, action_dim, self.hidden_width)
+        self.actor = Actor(action_dim, self.hidden_width, max_action)
+        self.critic = Critic(action_dim, self.hidden_width)
         self.critic_target = copy.deepcopy(self.critic)
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.lr)
@@ -151,7 +222,7 @@ class SAC(object):
 
     def choose_action(self, s, deterministic=False):
         s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0)
-        a, _ = self.actor(s, deterministic, False)  # When choosing actions, we do not need to compute log_pi
+        a, _, _ = self.actor(s, deterministic, False)  # When choosing actions, we do not need to compute log_pi
         return a.data.numpy().flatten()
 
     def save_param(self, epi):
@@ -176,13 +247,17 @@ class SAC(object):
         batch_s, batch_a, batch_r, batch_s_, batch_dw = replay_buffer.sample(self.batch_size)  # Sample a batch
 
         with torch.no_grad():
-            batch_a_, log_pi_ = self.actor(batch_s_)  # a' from the current policy
+            batch_a_, log_pi_, _ = self.actor(batch_s_)  # a' from the current policy
             # Compute target Q
             target_Q1, target_Q2 = self.critic_target(batch_s_, batch_a_)
             target_Q = batch_r + self.GAMMA * (1 - batch_dw) * (torch.min(target_Q1, target_Q2) - self.alpha * log_pi_)
 
         # Compute current Q
-        current_Q1, current_Q2 = self.critic(batch_s, batch_a)
+        a, log_pi, batch_s_cnn = self.actor(batch_s)
+        current_Q1, current_Q2 = self.critic(batch_s_cnn, batch_a)
+        # Two Q-functions to mitigate positive bias in the policy improvement step
+        # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
+        # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
         # Compute critic loss
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
         # Optimize the critic
@@ -190,13 +265,12 @@ class SAC(object):
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        # Freeze critic networks so you don't waste computational effort
-        for params in self.critic.parameters():
-            params.requires_grad = False
+        # # Freeze critic networks so you don't waste computational effort
+        # for params in self.critic.parameters():
+        #     params.requires_grad = False
 
         # Compute actor loss
-        a, log_pi = self.actor(batch_s)
-        Q1, Q2 = self.critic(batch_s, a)
+        Q1, Q2 = self.critic(batch_s_cnn, a)
         Q = torch.min(Q1, Q2)
         actor_loss = (self.alpha * log_pi - Q).mean()
 
@@ -205,9 +279,9 @@ class SAC(object):
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        # Unfreeze critic networks
-        for params in self.critic.parameters():
-            params.requires_grad = True
+        # # Unfreeze critic networks
+        # for params in self.critic.parameters():
+        #     params.requires_grad = True
 
         # Update alpha
         if self.adaptive_alpha:
@@ -246,9 +320,10 @@ if __name__ == '__main__':
     seed_torch(args.seed)
     env = CarRacingEnv(args, device)
     env.env.action_space.seed(args.seed)
-    state_dim = env.state_dim
+    state_dim = 4*96*96
     action_dim = env.action_dim
     max_action = env.max_action
+    max_size = int(1e4)
     max_episode_steps = env.max_episode_steps  # Maximum number of steps per episode
     start_time = time.time()
     print_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))
@@ -258,10 +333,10 @@ if __name__ == '__main__':
     print("max_action={}".format(max_action))
     print("max_episode_steps={}".format(max_episode_steps))
 
-    agent = SAC(state_dim, action_dim, max_action)
-    replay_buffer = ReplayBuffer(state_dim, action_dim)
+    agent = SAC(action_dim, max_action)
+    replay_buffer = ReplayBuffer(max_size, state_dim, action_dim)
     # Build a tensorboard
-    writer = SummaryWriter(log_dir='runs/SAC/SAC')
+    writer = SummaryWriter(log_dir='runs/SAC_CNN')
 
     max_train_steps = 3e6  # Maximum number of training steps
     random_steps = 25e3  # Take the random actions in the beginning for the better exploration
@@ -297,13 +372,13 @@ if __name__ == '__main__':
             dw = True if dead or finished else False
             if dead or finished or timeout:
                 done = True
-            ##  in the first 20 flames, gym is loading the Scenes and the state_ is NOT suitable as an input to the network
-            if epi_steps > 20.0:
-                replay_buffer.store(state, a, reward, state_, dw)  # Store the transition
-                total_steps += 1
-                epi_score += reward
-                if total_steps >= random_steps:
-                    agent.learn(replay_buffer)
+            # ##  in the first 20 flames, gym is loading the Scenes and the state_ is NOT suitable as an input to the network
+            # if epi_steps > 20.0:
+            replay_buffer.store(state, a, reward, state_, dw)  # Store the transition
+            total_steps += 1
+            epi_score += reward
+            if total_steps >= random_steps:
+                agent.learn(replay_buffer)
             state = state_
 
             # Evaluate the policy every 'evaluate_freq' steps
@@ -317,11 +392,12 @@ if __name__ == '__main__':
                 runtime = end_time - start_time
                 runtime = strftime("%d-%H:%M:%S", gmtime(runtime))
 
-                print("evaluate_num:{}\tevaluate_reward:{:.2f}\tRunTime:{}".format(evaluate_num, evaluate_reward, runtime))
+                print("evaluate_num:{}\tevaluate_reward:{:.2f}\tRunTime:{}".format(evaluate_num, evaluate_reward,
+                                                                                   runtime))
                 writer.add_scalar('step_rewards_CarRacingV2', evaluate_reward, global_step=total_steps)
+                agent.save_param(episode)  # print("save net params in param/SAC_{}
                 # Save the rewards
                 if evaluate_num % 10 == 0:
-                    agent.save_param(episode)  # print("save net params in param/SAC_{}
                     np.save('./data_train/SAC_evaluate_rewards.npy', np.array(evaluate_rewards))
                     np.save('./data_train/SAC_training_records.npy', training_records)
                     print('save records')

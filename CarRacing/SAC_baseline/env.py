@@ -20,7 +20,8 @@ class CarRacingEnv(object):
             self.env = gym.make('CarRacing-v2', render_mode='human').unwrapped
         else:
             self.env = gym.make('CarRacing-v2').unwrapped
-        self.reward_threshold = self.env.spec.reward_threshold  # 900
+        # self.reward_threshold = self.env.spec.reward_threshold  # 900
+        self.reward_threshold = 600
         self.img_stack = args.img_stack
         self.action_repeat = args.action_repeat
         self.device = device
@@ -51,19 +52,15 @@ class CarRacingEnv(object):
         total_reward = 0
         for i in range(self.action_repeat):
             img_rgb, reward, terminated, truncated, _ = self.env.step(action)
-            # don't penalize "die state"
-            if terminated:
-                reward += 100
-            # grass penalty
-            on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
-            if on_grass > 160:
-                reward -= 0.06
-                ##  to test.py the values of on_grass, un-comment the codes below:
-                # plt.imshow(img_rgb[64:78, 42:54, 1])
-                # plt.title("{}".format(on_grass))
-                # plt.pause(0.2)
-            speed_reward = (action[1] - action[2]) * 0.05
-            reward += max(speed_reward, 0)
+            # # don't penalize "die state"
+            # if terminated:
+            #     reward += 100
+            # # grass penalty
+            # on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
+            # if on_grass > 160:
+            #     reward -= 0.0
+            # speed_reward = (action[1] - action[2]) * 0.05
+            # reward += max(speed_reward, 0)
             self.timestep += 1
             total_reward += reward
             # if no reward recently, end the episode
