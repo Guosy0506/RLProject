@@ -226,7 +226,7 @@ class SAC(object):
         return a.data.numpy().flatten()
 
     def save_param(self, epi):
-        _dir = "param/{}_{}.pkl".format("SAC", epi)
+        _dir = "CarRacing/SAC_baseline/param/{}_{}.pkl".format("SAC", epi)
         _state = {'actor': self.actor.state_dict(),
                   'actor_optim': self.actor_optimizer.state_dict(),
                   'critic': self.critic.state_dict(),
@@ -251,9 +251,10 @@ class SAC(object):
             # Compute target Q
             target_Q1, target_Q2 = self.critic_target(batch_s_next_cnn, batch_a_)
             target_Q = batch_r + self.GAMMA * (1 - batch_dw) * (torch.min(target_Q1, target_Q2) - self.alpha * log_pi_)
+            a, log_pi, batch_s_cnn = self.actor(batch_s)  # *********
 
         # Compute current Q
-        a, log_pi, batch_s_cnn = self.actor(batch_s)
+        # a, log_pi, batch_s_cnn = self.actor(batch_s)  # **********
         current_Q1, current_Q2 = self.critic(batch_s_cnn, batch_a)
         # Two Q-functions to mitigate positive bias in the policy improvement step
         # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
