@@ -244,12 +244,12 @@ class SAC(object):
         self.critic_optimizer.load_state_dict(checkpoint['critic_optim'])
 
     def learn(self, replay_buffer):
-        batch_s, batch_a, batch_r, batch_s_, batch_dw = replay_buffer.sample(self.batch_size)  # Sample a batch
+        batch_s, batch_a, batch_r, batch_s_next, batch_dw = replay_buffer.sample(self.batch_size)  # Sample a batch
 
         with torch.no_grad():
-            batch_a_, log_pi_, _ = self.actor(batch_s_)  # a' from the current policy
+            batch_a_, log_pi_, batch_s_next_cnn = self.actor(batch_s_next)  # a' from the current policy
             # Compute target Q
-            target_Q1, target_Q2 = self.critic_target(batch_s_, batch_a_)
+            target_Q1, target_Q2 = self.critic_target(batch_s_next_cnn, batch_a_)
             target_Q = batch_r + self.GAMMA * (1 - batch_dw) * (torch.min(target_Q1, target_Q2) - self.alpha * log_pi_)
 
         # Compute current Q
