@@ -339,7 +339,7 @@ if __name__ == '__main__':
     # Build a tensorboard
     writer = SummaryWriter(log_dir='runs/SAC_baseline')
 
-    max_train_steps = 3e6  # Maximum number of training steps
+    max_train_steps = 1e5  # Maximum number of training steps
     random_steps = 25e3  # Take the random actions in the beginning for the better exploration
     evaluate_freq = 5e3  # Evaluate the policy every 'evaluate_freq' steps
     evaluate_num = 0  # Record the number of evaluations
@@ -399,8 +399,8 @@ if __name__ == '__main__':
                 agent.save_param(episode)  # print("save net params in param/SAC_{}
                 # Save the rewards
                 if evaluate_num % 10 == 0:
-                    np.save('./data_train/SAC_evaluate_rewards.npy', np.array(evaluate_rewards))
-                    np.save('./data_train/SAC_training_records.npy', training_records)
+                    np.save('CarRacing/SAC_baseline/data_train/SAC_evaluate_rewards.npy', np.array(evaluate_rewards))
+                    np.save('CarRacing/SAC_baseline/data_train/SAC_training_records.npy', training_records)
                     print('save records')
 
         running_score = running_score * 0.99 + epi_score * 0.01

@@ -55,10 +55,10 @@ class CarRacingEnv(object):
             # # don't penalize "die state"
             # if terminated:
             #     reward += 100
-            # # grass penalty
-            # on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
-            # if on_grass > 160:
-            #     reward -= 0.0
+            # grass penalty
+            on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
+            if on_grass > 160:
+                reward -= 10.0
             # speed_reward = (action[1] - action[2]) * 0.05
             # reward += max(speed_reward, 0)
             self.timestep += 1
