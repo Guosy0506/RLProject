@@ -19,12 +19,12 @@ class Env(object):
         return np.array(self.stack)
 
     def step(self, action):
-        img_rgb, _, terminated, truncated, _ = self.env.step(action)
+        img_rgb, reward, terminated, truncated, _ = self.env.step(action)
         img_gray = self.rgb2gray(img_rgb)
         self.stack.pop(0)
         self.stack.append(img_gray)
         assert len(self.stack) == 4
-        return np.array(self.stack), terminated, truncated
+        return np.array(self.stack), reward, terminated, truncated
 
     @staticmethod
     def rgb2gray(rgb, norm=True):
@@ -105,14 +105,16 @@ if __name__ == "__main__":
     agent.load_param()
     # 环境初始化
     state = env.reset()
+    total_reward = 0
     # 循环交互
     while True:
         # 从动作空间随机获取一个动作
         action = agent.select_action(state)
         # agent与环境进行一步交互
-        state, terminated, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+        state, reward, terminated, truncated = env.step(action * np.array([2., 1., 1.]) + np.array([-1., 0., 0.]))
+        total_reward += reward
         # print(env.env.observation_space)
-        # print('state = {0}; reward = {1}'.format(state, reward))
+        print('reward = {}'.format(total_reward))
         # 判断当前episode 是否完成
         if terminated:
             print("Episode is terminated!")

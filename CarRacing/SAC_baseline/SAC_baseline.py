@@ -358,7 +358,7 @@ if __name__ == '__main__':
     while total_steps < max_train_steps:
         seed = torch.randint(0, 100000, (1,)).item()
         state = env.reset(seed=seed)
-        epi_steps = 0
+        # epi_steps = 0  # unuse
         done = False
         epi_score = 0
         episode += 1
@@ -371,7 +371,7 @@ if __name__ == '__main__':
                 a = agent.choose_action(state)
                 # print('action is {}'.format(a))
             state_, reward, dead, finished, timeout = env.step(a)
-            epi_steps = env.timestep
+            # epi_steps = env.timestep
             # Set env = gym.make.unwrapped, and set max_episode_steps = 1000,now we have 3 conditions:
             # dead / finished(truncated) / timeout(reach the max_episode_steps).
             # When dead or win or reaching the max_episode_steps, done will be Ture, we need to distinguish them;

@@ -70,7 +70,8 @@ class CarRacingEnv(object):
             if self.timestep == self.max_episode_steps:
                 self.timeout = True
                 break
-            if self.av_r(reward) <= -0.1 or terminated:
+            # 以下判断条件需配合单步奖励的最低分进行实时调整，否则扣分过多，会直接判定当圈状态为dead
+            if self.av_r(reward) <= -10 or terminated:
                 self.dead = True
                 break
         img_gray = self.rgb2gray(img_rgb)
