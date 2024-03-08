@@ -226,7 +226,7 @@ class SAC(object):
         return a.data.numpy().flatten()
 
     def save_param(self, epi):
-        _dir = "CarRacing/SAC_baseline/param/{}_{}.pkl".format("SAC", epi)
+        _dir = "./param/{}_{}.pkl".format("SAC", epi)
         _state = {'actor': self.actor.state_dict(),
                   'actor_optim': self.actor_optimizer.state_dict(),
                   'critic': self.critic.state_dict(),
@@ -324,10 +324,12 @@ if __name__ == '__main__':
     state_dim = 4*96*96
     action_dim = env.action_dim
     max_action = env.max_action
-    max_size = int(1e4)
+    replaybuffer_size = int(1e4)
     max_episode_steps = env.max_episode_steps  # Maximum number of steps per episode
+    work_path = os.getcwd()
     start_time = time.time()
     print_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))
+    print('Working path: {}'.format(work_path))
     print("Begin at {}".format(print_time))
     print("state_dim={}".format(state_dim))
     print("action_dim={}".format(action_dim))
@@ -335,12 +337,12 @@ if __name__ == '__main__':
     print("max_episode_steps={}".format(max_episode_steps))
 
     agent = SAC(action_dim, max_action)
-    replay_buffer = ReplayBuffer(max_size, state_dim, action_dim)
+    replay_buffer = ReplayBuffer(replaybuffer_size, state_dim, action_dim)
     # Build a tensorboard
-    writer = SummaryWriter(log_dir='runs/SAC_baseline')
+    writer = SummaryWriter(log_dir='./runs/SAC_baseline')
 
     max_train_steps = 1e5  # Maximum number of training steps
-    random_steps = 25e3  # Take the random actions in the beginning for the better exploration
+    sample_steps = replaybuffer_size  # Take the random actions in the beginning for the better exploration
     evaluate_freq = 5e3  # Evaluate the policy every 'evaluate_freq' steps
     evaluate_num = 0  # Record the number of evaluations
     evaluate_rewards = []  # Record the rewards during the evaluating
@@ -349,6 +351,9 @@ if __name__ == '__main__':
     episode = 0  # Record the number of current episode
     running_score = 0  # Record the running score
     training_records = []  # Record something important during the training
+    # when steps < sample_steps, only store the random action and state,
+    # when steps > sample_steps, begin training network
+    train_mode = False
 
     while total_steps < max_train_steps:
         seed = torch.randint(0, 100000, (1,)).item()
@@ -357,8 +362,10 @@ if __name__ == '__main__':
         done = False
         epi_score = 0
         episode += 1
+        if total_steps >= sample_steps:
+            train_mode = True
         while not done:
-            if total_steps < random_steps:  # Take the random actions in the beginning for the better exploration
+            if not train_mode:  # Take the random actions in the beginning for the better exploration
                 a = env.env.action_space.sample()
             else:
                 a = agent.choose_action(state)
@@ -378,12 +385,12 @@ if __name__ == '__main__':
             replay_buffer.store(state, a, reward, state_, dw)  # Store the transition
             total_steps += 1
             epi_score += reward
-            if total_steps >= random_steps:
+            if train_mode:
                 agent.learn(replay_buffer)
             state = state_
 
             # Evaluate the policy every 'evaluate_freq' steps
-            if (total_steps + 1) % evaluate_freq == 0:
+            if train_mode and (total_steps + 1) % evaluate_freq == 0:
                 evaluate_num += 1
                 env_evaluate = CarRacingEnv(args, device, render=True)
                 evaluate_reward = evaluate_policy(env_evaluate, agent)
@@ -399,8 +406,8 @@ if __name__ == '__main__':
                 agent.save_param(episode)  # print("save net params in param/SAC_{}
                 # Save the rewards
                 if evaluate_num % 10 == 0:
-                    np.save('CarRacing/SAC_baseline/data_train/SAC_evaluate_rewards.npy', np.array(evaluate_rewards))
-                    np.save('CarRacing/SAC_baseline/data_train/SAC_training_records.npy', training_records)
+                    np.save('./data_train/SAC_evaluate_rewards.npy', np.array(evaluate_rewards))
+                    np.save('./data_train/SAC_training_records.npy', training_records)
                     print('save records')
 
         running_score = running_score * 0.99 + epi_score * 0.01
