@@ -14,7 +14,7 @@ import time
 from time import strftime, gmtime
 
 parser = argparse.ArgumentParser(description='Train a SAC agent for the CarRacing-v2')
-parser.add_argument('--action-repeat', type=int, default=4, metavar='N', help='repeat action in N frames (default: 4)')
+parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='repeat action in N frames (default: 8)')
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
 parser.add_argument('--seed', type=int, default=1024, metavar='N', help='random seed (default: 1024)')
 args = parser.parse_args()
@@ -304,11 +304,14 @@ def evaluate_policy(env, agent):
     for _ in range(times):
         s = env.reset()
         done = False
+        episode_step = 0
         episode_reward = 0
         while not done:
             a = agent.choose_action(s, deterministic=True)  # We use the deterministic policy during the evaluating
             s_, reward, dead, finished, timeout = env.step(a)
-            episode_reward += reward
+            episode_step += 1
+            if episode_step >= 20:
+                episode_reward += reward
             if dead or finished or timeout:
                 done = True
             s = s_
@@ -341,7 +344,7 @@ if __name__ == '__main__':
     # Build a tensorboard
     writer = SummaryWriter(log_dir='./runs/SAC_baseline')
 
-    max_train_steps = 1e5  # Maximum number of training steps
+    max_train_steps = 1e6  # Maximum number of training steps
     sample_steps = replaybuffer_size  # Take the random actions in the beginning for the better exploration
     evaluate_freq = 5e3  # Evaluate the policy every 'evaluate_freq' steps
     evaluate_num = 0  # Record the number of evaluations
@@ -371,7 +374,7 @@ if __name__ == '__main__':
                 a = agent.choose_action(state)
                 # print('action is {}'.format(a))
             state_, reward, dead, finished, timeout = env.step(a)
-            # epi_steps = env.timestep
+            epi_steps = env.timestep
             # Set env = gym.make.unwrapped, and set max_episode_steps = 1000,now we have 3 conditions:
             # dead / finished(truncated) / timeout(reach the max_episode_steps).
             # When dead or win or reaching the max_episode_steps, done will be Ture, we need to distinguish them;
@@ -381,12 +384,12 @@ if __name__ == '__main__':
             if dead or finished or timeout:
                 done = True
             # ##  in the first 20 flames, gym is loading the Scenes and the state_ is NOT suitable as an input to the network
-            # if epi_steps > 20.0:
-            replay_buffer.store(state, a, reward, state_, dw)  # Store the transition
-            total_steps += 1
-            epi_score += reward
-            if train_mode:
-                agent.learn(replay_buffer)
+            if epi_steps > 20.0:
+                replay_buffer.store(state, a, reward, state_, dw)  # Store the transition
+                total_steps += 1
+                epi_score += reward
+                if train_mode:
+                    agent.learn(replay_buffer)
             state = state_
 
             # Evaluate the policy every 'evaluate_freq' steps

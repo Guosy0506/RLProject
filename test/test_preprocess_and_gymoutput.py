@@ -8,16 +8,19 @@ from PIL import Image
 def main():
     env = gym.make("CarRacing-v2", render_mode='human')
     state, _ = env.reset()
-    for i in range(10):
-        action = env.action_space.sample()
+    for i in range(1000):
+        action = [0,1,0]
         state, _, terminated, truncated, _ = env.step(action)
         gray = np.dot(state[..., :], [0.299, 0.587, 0.114])
-        # gray = gray / 128. - 1.
-        # gray = gray[0:84, 6:90]
-        state = state[0:84, 6:90]
-        print(gray.shape)
+        gray = gray / 128. - 1.
+        on_grass = np.mean(state[64:78, 42:54, 1])
+        if on_grass > 150:
+            print(i)
+        print(on_grass)
+        plt.subplot(1, 2, 1)
+        plt.imshow(state[64:78, 42:54])
+        plt.subplot(1, 2, 2)
         plt.imshow(state)
-        plt.pause(2)
         if terminated:
             print("Episode is terminated!")
             break
