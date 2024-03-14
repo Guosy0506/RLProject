@@ -14,7 +14,7 @@ import time
 from time import strftime, gmtime
 
 parser = argparse.ArgumentParser(description='Train a SAC agent for the CarRacing-v2')
-parser.add_argument('--action-repeat', type=int, default=8, metavar='N', help='repeat action in N frames (default: 8)')
+parser.add_argument('--action-repeat', type=int, default=2, metavar='N', help='repeat action in N frames (default: 8)')
 parser.add_argument('--img-stack', type=int, default=4, metavar='N', help='stack N image in a state (default: 4)')
 parser.add_argument('--seed', type=int, default=1024, metavar='N', help='random seed (default: 1024)')
 args = parser.parse_args()
@@ -309,9 +309,7 @@ def evaluate_policy(env, agent):
         while not done:
             a = agent.choose_action(s, deterministic=True)  # We use the deterministic policy during the evaluating
             s_, reward, dead, finished, timeout = env.step(a)
-            episode_step += 1
-            if episode_step >= 20:
-                episode_reward += reward
+            episode_reward += reward
             if dead or finished or timeout:
                 done = True
             s = s_

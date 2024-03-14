@@ -20,8 +20,10 @@ if __name__ == '__main__':
     print("test")
     date = '0314'
     # index_list = [62,84,107,130,154,176,198,221,242,265,288,309,331,352,374,396,418,441]  # 0312
-    index_list = [155,214,275,334,394,450,505,562]
-    times = 1  # Perform three evaluations and calculate the average
+    # 155,214,275,334,394,450,505,562,
+    # index_list = [622,677,734,793,857,920,977,1035,1089,1149,1211]
+    index_list = [1149]
+    times = 3  # Perform three evaluations and calculate the average
     for index in index_list:
         model_path = './param/{}/SAC_{}.pkl'.format(date,index)
         agent.load_param(model_path)

@@ -52,6 +52,10 @@ class CarRacingEnv(object):
         total_reward = 0
         for i in range(self.action_repeat):
             img_rgb, reward, terminated, truncated, _ = self.env.step(action)
+            # don't penalize "-0.1 per second"
+            reward += 0.1
+            # let the reward of every bars turn up to ratio(10)
+            reward = reward * 10
             # # don't penalize "die state"
             # if terminated:
             #     reward += 100
@@ -62,6 +66,8 @@ class CarRacingEnv(object):
             # speed_reward = (action[1] - action[2]) * 0.05
             # reward += max(speed_reward, 0)
             self.timestep += 1
+            if self.timestep <= 16:
+                reward = 0
             total_reward += reward
             # if no reward recently, end the episode
             if truncated:
@@ -71,7 +77,7 @@ class CarRacingEnv(object):
                 self.timeout = True
                 break
             # 以下判断条件需配合单步奖励的最低分进行实时调整，否则扣分过多，会直接判定当圈状态为dead
-            if self.av_r(reward) <= -10 or terminated:
+            if self.timestep > 16 and (self.av_r(reward) <= -10 or terminated):
                 self.dead = True
                 break
         img_gray = self.rgb2gray(img_rgb)
