@@ -58,7 +58,7 @@ class CarRacingEnv(object):
             # grass penalty
             on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
             if on_grass > 150:
-                reward -= 10.0
+                reward -= 200.0
             # speed_reward = (action[1] - action[2]) * 0.05
             # reward += max(speed_reward, 0)
             self.timestep += 1
@@ -95,7 +95,7 @@ class CarRacingEnv(object):
         # only calculate ave_reward for last {length} steps, if smaller
         # than -0.1,the episode is died
         count = 0
-        length = 70
+        length = 50
         history = np.zeros(length)
 
         def memory(reward):

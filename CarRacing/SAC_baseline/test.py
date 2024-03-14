@@ -15,13 +15,15 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
 if __name__ == '__main__':
-    env = CarRacingEnv(args, device,render=True)
+    env = CarRacingEnv(args, device, render=True)
     agent = SAC(env.action_dim, env.max_action)
     print("test")
-    index_list = [62,84,107,130,154,176,198,221,242,265,288,309,331,352,374,396,418,441]
-    times = 3  # Perform three evaluations and calculate the average
+    date = '0314'
+    # index_list = [62,84,107,130,154,176,198,221,242,265,288,309,331,352,374,396,418,441]  # 0312
+    index_list = [155,214,275,334,394,450,505,562]
+    times = 1  # Perform three evaluations and calculate the average
     for index in index_list:
-        model_path = './param/param/SAC_{}.pkl'.format(index)
+        model_path = './param/{}/SAC_{}.pkl'.format(date,index)
         agent.load_param(model_path)
         print("load param in Epi_{}".format(index))
         evaluate_reward = 0
@@ -38,7 +40,7 @@ if __name__ == '__main__':
                 state = state_
             print("episode {} reward is {}".format(i,episode_reward))
             evaluate_reward += episode_reward
-        print("average reward of index {} is {}".format(index, evaluate_reward))
+        # print("average reward of index {} is {}".format(index, evaluate_reward))
     env.env.close()
     # time.sleep(1)
     # 环境结束
