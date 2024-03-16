@@ -21,7 +21,7 @@ class CarRacingEnv(object):
         else:
             self.env = gym.make('CarRacing-v2').unwrapped
         # self.reward_threshold = self.env.spec.reward_threshold  # 900
-        self.reward_threshold = 600
+        self.reward_threshold = 5000
         self.img_stack = args.img_stack
         self.action_repeat = args.action_repeat
         self.device = device

@@ -164,8 +164,12 @@ class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
 
 
 class ReplayBuffer(object):
-    def __init__(self, max_size, state_dim, action_dim):
+    # Set max_size and replay_size, while replay_size is smaller than max_size.
+    # When the 'count' reaches replay_size, it will be reset to 0.
+    # So that the rest of the ReplayBuffer will save the random sample on the beginning of trainning.
+    def __init__(self, max_size, replay_size, state_dim, action_dim):
         self.max_size = max_size
+        self.replay_size = replay_size
         self.count = 0
         self.size = 0
         self.s = np.zeros((self.max_size, 4, 96, 96))
@@ -180,7 +184,8 @@ class ReplayBuffer(object):
         self.r[self.count] = r
         self.s_[self.count] = s_
         self.dw[self.count] = dw
-        self.count = (self.count + 1) % self.max_size  # When the 'count' reaches max_size, it will be reset to 0.
+        # self.count = (self.count + 1) % self.max_size  # When the 'count' reaches max_size, it will be reset to 0.
+        self.count = (self.count + 1) % self.replay_size # When the 'count' reaches replay_size, it will be reset to 0.
         self.size = min(self.size + 1, self.max_size)  # Record the number of  transitions
 
     def sample(self, batch_size):
@@ -325,7 +330,8 @@ if __name__ == '__main__':
     state_dim = 4*96*96
     action_dim = env.action_dim
     max_action = env.max_action
-    replaybuffer_size = int(1e4)
+    replaybuffer_size = int(1e5)
+    replaybuffer_replaysize = int(8e4)
     max_episode_steps = env.max_episode_steps  # Maximum number of steps per episode
     work_path = os.getcwd()
     start_time = time.time()
@@ -338,13 +344,13 @@ if __name__ == '__main__':
     print("max_episode_steps={}".format(max_episode_steps))
 
     agent = SAC(action_dim, max_action)
-    replay_buffer = ReplayBuffer(replaybuffer_size, state_dim, action_dim)
+    replay_buffer = ReplayBuffer(replaybuffer_size, replaybuffer_replaysize, state_dim, action_dim)
     # Build a tensorboard
     writer = SummaryWriter(log_dir='./runs/SAC_baseline')
 
     max_train_steps = 1e6  # Maximum number of training steps
     sample_steps = replaybuffer_size  # Take the random actions in the beginning for the better exploration
-    evaluate_freq = 5e3  # Evaluate the policy every 'evaluate_freq' steps
+    evaluate_freq = 25e3  # Evaluate the policy every 'evaluate_freq' steps
     evaluate_num = 0  # Record the number of evaluations
     evaluate_rewards = []  # Record the rewards during the evaluating
     total_steps = 0  # Record the total steps during the training
