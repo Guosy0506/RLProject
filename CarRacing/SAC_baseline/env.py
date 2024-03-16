@@ -22,6 +22,8 @@ class CarRacingEnv(object):
             self.env = gym.make('CarRacing-v2').unwrapped
         # self.reward_threshold = self.env.spec.reward_threshold  # 900
         self.reward_threshold = 5000
+        self.reward_ratio = 10
+        self.speed_ratio = 10
         self.img_stack = args.img_stack
         self.action_repeat = args.action_repeat
         self.device = device
@@ -55,7 +57,7 @@ class CarRacingEnv(object):
             # don't penalize "-0.1 per second"
             reward += 0.1
             # let the reward of every bars turn up to ratio(10)
-            reward = reward * 10
+            reward = reward * self.reward_ratio  # one bars almost 6.5 to 65
             # # don't penalize "die state"
             # if terminated:
             #     reward += 100
@@ -63,7 +65,8 @@ class CarRacingEnv(object):
             on_grass = np.mean(img_rgb[64:78, 42:54, 1])  # channel 1 has the most difference
             if on_grass > 150:
                 reward -= 200.0
-            # speed_reward = (action[1] - action[2]) * 0.05
+            speed_reward = (action[1] - action[2]) * self.speed_ratio
+            reward += speed_reward
             # reward += max(speed_reward, 0)
             self.timestep += 1
             if self.timestep <= 16:
