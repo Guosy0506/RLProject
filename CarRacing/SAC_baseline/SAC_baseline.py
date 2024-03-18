@@ -330,8 +330,8 @@ if __name__ == '__main__':
     state_dim = 4*96*96
     action_dim = env.action_dim
     max_action = env.max_action
-    replaybuffer_size = int(1e5)
-    replaybuffer_replaysize = int(8e4)
+    replaybuffer_size = int(1e4)
+    replaybuffer_replaysize = int(1e4)
     max_episode_steps = env.max_episode_steps  # Maximum number of steps per episode
     work_path = os.getcwd()
     start_time = time.time()
@@ -348,9 +348,9 @@ if __name__ == '__main__':
     # Build a tensorboard
     writer = SummaryWriter(log_dir='./runs/SAC_baseline')
 
-    max_train_steps = 1e6  # Maximum number of training steps
+    max_train_steps = 3e5  # Maximum number of training steps
     sample_steps = replaybuffer_size  # Take the random actions in the beginning for the better exploration
-    evaluate_freq = 25e3  # Evaluate the policy every 'evaluate_freq' steps
+    evaluate_freq = 1e4  # Evaluate the policy every 'evaluate_freq' steps
     evaluate_num = 0  # Record the number of evaluations
     evaluate_rewards = []  # Record the rewards during the evaluating
     total_steps = 0  # Record the total steps during the training
@@ -371,6 +371,7 @@ if __name__ == '__main__':
         episode += 1
         if total_steps >= sample_steps:
             train_mode = True
+            print("start training...")
         while not done:
             if not train_mode:  # Take the random actions in the beginning for the better exploration
                 a = env.env.action_space.sample()
@@ -398,6 +399,7 @@ if __name__ == '__main__':
 
             # Evaluate the policy every 'evaluate_freq' steps
             if train_mode and (total_steps + 1) % evaluate_freq == 0:
+                print("now already train {} steps".format(total_steps + 1))
                 evaluate_num += 1
                 env_evaluate = CarRacingEnv(args, device, render=True)
                 evaluate_reward = evaluate_policy(env_evaluate, agent)
